@@ -1012,5 +1012,3 @@ elif st.session_state.page == 'detail':
                 margin=dict(t=20,b=10,l=0,r=0), height=200
             )
             st.plotly_chart(cmp, use_container_width=True)
-
->> 이거 구현하고 싶은데 ..replit은 사용제한 걸려있고, pydroid3는 저번에 너와 하다가 실패했는데 어떻게 하면 좋을까?
