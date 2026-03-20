@@ -3,24 +3,18 @@ import streamlit as st
 def apply_custom_style():
     st.markdown("""
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-    .stApp{background:#F7F8FA; font-family:'Inter',sans-serif;}
-    .macro-card{background:#FFFFFF; border:1px solid #E8EAED; border-radius:10px; padding:14px;}
-    .stock-card{background:#FFFFFF; border:1px solid #E8EAED; border-radius:10px; padding:16px;}
-    .badge-green{background:#ECFDF5;color:#059669;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;}
-    .badge-yellow{background:#FFFBEB;color:#D97706;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;}
-    .badge-red{background:#FEF2F2;color:#DC2626;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;}
-    .section-hdr{font-size:11px;font-weight:600;color:#6B7280;text-transform:uppercase;margin-bottom:12px;border-bottom:1px solid #E8EAED;}
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    .stApp { background: #F7F8FA; font-family: 'Inter', sans-serif; }
+    .macro-card { background: white; border-radius: 12px; padding: 20px; border: 1px solid #E8EAED; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+    .stock-card { background: white; border-radius: 12px; padding: 20px; border: 1px solid #E8EAED; transition: 0.3s; }
+    .stock-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .badge-green { background:#ECFDF5; color:#059669; border:1px solid #A7F3D0; border-radius:20px; padding:4px 12px; font-size:12px; font-weight:600; }
+    .badge-red { background:#FEF2F2; color:#DC2626; border:1px solid #FECACA; border-radius:20px; padding:4px 12px; font-size:12px; font-weight:600; }
+    .badge-yellow { background:#FFFBEB; color:#D97706; border:1px solid #FDE68A; border-radius:20px; padding:4px 12px; font-size:12px; font-weight:600; }
     </style>
     """, unsafe_allow_html=True)
 
 def get_signal_ui(wr):
-    if wr >= 60:   return "매수 우위","badge-green","#059669"
-    elif wr >= 45: return "중립 관망","badge-yellow","#D97706"
-    else:          return "리스크 경고","badge-red","#DC2626"
-
-def zcolor(z):
-    if z > 1.5: return "#DC2626"
-    elif z < -1.5: return "#059669"
-    else: return "#6B7280"
-
+    if wr >= 65: return "강력 매수", "badge-green", "#059669"
+    elif wr >= 45: return "중립", "badge-yellow", "#D97706"
+    else: return "위험 관리", "badge-red", "#DC2626"
