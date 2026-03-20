@@ -1,0 +1,222 @@
+import streamlit as st
+import pandas as pd
+import yfinance as yf
+import numpy as np
+
+# -----------------------------
+# 1. 기본 설정
+# -----------------------------
+st.set_page_config(page_title="Risk Guide", layout="wide")
+
+st.markdown("""
+<style>
+.stApp { background-color: #FFFFFF; color: #000000; }
+.news-card { border-left: 5px solid #2E7D32; background: #F1F8E9; padding: 10px; margin: 5px 0; border-radius: 4px; }
+.news-neg { border-left: 5px solid #C62828; background: #FFEBEE; }
+</style>
+""", unsafe_allow_html=True)
+
+# -----------------------------
+# 2. 세션 상태
+# -----------------------------
+if 'page' not in st.session_state:
+    st.session_state['page'] = 'main'
+
+if 'portfolio' not in st.session_state:
+    st.session_state['portfolio'] = [
+        {"ticker": "XOM", "name": "Exxon Mobil"}
+    ]
+
+# -----------------------------
+# 3. 안전한 데이터 로딩 함수
+# -----------------------------
+@st.cache_data(ttl=3600)
+def load_data(ticker):
+    try:
+        df = yf.download(ticker, period="90d", interval="1d", progress=False)
+
+        if df.empty:
+            return None
+
+        # Date 컬럼 보정 (핵심!)
+        if 'Date' not in df.columns:
+            df = df.reset_index()
+
+        return df
+
+    except Exception as e:
+        return None
+
+# -----------------------------
+# 4. Z-score 계산 (안정 버전)
+# -----------------------------
+def calculate_z_score(df):
+    try:
+        close = df['Close']
+
+        mean = close.tail(30).mean()
+        std = close.tail(30).std()
+
+        if std == 0 or np.isnan(std):
+            return 0
+
+        current = close.iloc[-1]
+
+        z = (current - mean) / std
+        return round(z, 2)
+
+    except:
+        return 0
+
+# -----------------------------
+# 5. 뉴스 감성 분석 (개선 버전)
+# -----------------------------
+def analyze_news_sentiment(ticker):
+    try:
+        stock = yf.Ticker(ticker)
+        news_list = stock.news[:5]
+
+        pos_keywords = ['buy', 'growth', 'up', 'positive', 'surge', 'win']
+        neg_keywords = ['sell', 'fall', 'down', 'negative', 'drop', 'loss', 'risk']
+
+        score = 0
+        analyzed = []
+
+        for n in news_list:
+            title = n['title'].lower()
+            sentiment = "Neutral"
+
+            if any(w in title for w in pos_keywords):
+                score += 1
+                sentiment = "Positive"
+            elif any(w in title for w in neg_keywords):
+                score -= 1
+                sentiment = "Negative"
+
+            analyzed.append({
+                "title": n['title'],
+                "link": n['link'],
+                "sentiment": sentiment
+            })
+
+        return score * 1.0, analyzed  # 가중치 줄임
+
+    except:
+        return 0, []
+
+# -----------------------------
+# 6. 변수 매핑 (핵심 구조)
+# -----------------------------
+VARIABLE_MAP = {
+    "XOM": {
+        "oil": 0.6,
+        "vix": 0.2,
+        "stock": 0.2
+    }
+}
+
+# -----------------------------
+# 7. 베이지안 업데이트 (간단 버전)
+# -----------------------------
+def bayesian_update(prior, news_score):
+    likelihood = 0.5 + (news_score * 0.05)
+
+    posterior = (prior * likelihood) / (
+        prior * likelihood + (1 - prior) * (1 - likelihood)
+    )
+
+    return posterior
+
+# -----------------------------
+# 8. 메인 화면
+# -----------------------------
+if st.session_state['page'] == 'main':
+
+    st.title("💰 리스크 가이드")
+
+    if st.button("XOM 분석 보기"):
+        st.session_state['selected_stock'] = "XOM"
+        st.session_state['page'] = 'detail'
+        st.rerun()
+
+# -----------------------------
+# 9. 상세 분석
+# -----------------------------
+elif st.session_state['page'] == 'detail':
+
+    ticker = st.session_state.get('selected_stock', 'XOM')
+
+    if st.sidebar.button("⬅️ 돌아가기"):
+        st.session_state['page'] = 'main'
+        st.rerun()
+
+    st.header(f"🔍 {ticker} 분석 리포트")
+
+    with st.spinner("데이터 분석 중..."):
+
+        df_stock = load_data(ticker)
+        df_oil = load_data("CL=F")
+        df_vix = load_data("^VIX")
+
+        if df_stock is None or df_oil is None:
+            st.error("데이터 로딩 실패")
+            st.stop()
+
+        z_stock = calculate_z_score(df_stock)
+        z_oil = calculate_z_score(df_oil)
+        z_vix = calculate_z_score(df_vix)
+
+        news_score, news_data = analyze_news_sentiment(ticker)
+
+        # -----------------------------
+        # 10. 리스크 점수 계산
+        # -----------------------------
+        weights = VARIABLE_MAP.get(ticker, {})
+
+        score = (
+            z_oil * weights.get("oil", 0) +
+            z_vix * weights.get("vix", 0) -
+            z_stock * weights.get("stock", 0)
+        )
+
+        # 점수 → 확률 변환
+        base_prob = 1 / (1 + np.exp(-score))
+
+        # 뉴스 반영
+        final_prob = bayesian_update(base_prob, news_score)
+
+        final_prob = max(0.05, min(0.95, final_prob))
+
+    # -----------------------------
+    # 11. 출력
+    # -----------------------------
+    tab1, tab2, tab3 = st.tabs(["🌡️ 종합", "📊 지표", "📰 뉴스"])
+
+    with tab1:
+        st.metric("승률", f"{final_prob*100:.1f}%")
+        st.progress(float(final_prob))
+
+        st.write("### 🧠 해석")
+        st.write(f"""
+        - 유가 영향: {z_oil}
+        - 변동성(VIX): {z_vix}
+        - 주가 위치: {z_stock}
+        - 뉴스 영향: {news_score}
+        """)
+
+    with tab2:
+        st.write("### Z-score")
+        st.write(f"- 주가: {z_stock}")
+        st.write(f"- 유가: {z_oil}")
+        st.write(f"- VIX: {z_vix}")
+
+    with tab3:
+        for n in news_data:
+            css = "news-card news-neg" if n['sentiment'] == "Negative" else "news-card"
+
+            st.markdown(f"""
+            <div class="{css}">
+                <b>[{n['sentiment']}]</b>
+                <a href="{n['link']}" target="_blank">{n['title']}</a>
+            </div>
+            """, unsafe_allow_html=True)
