@@ -1,3 +1,17 @@
+# =============================================================================
+# main.py — 앱 진입점 & 사이드바 포트폴리오 관리
+#
+# ✅ 이 파일을 수정하는 경우:
+#   - 세션 상태 초기값 변경  → init_session()
+#   - 사이드바 UI 변경       → show_sidebar()
+#   - 페이지 라우팅 추가     → 맨 아래 if/elif 블록
+#
+# 페이지 화면은 pages.py, 데이터·계산은 engine.py, 설정은 config.py
+#
+# Replit 실행 명령어:
+#   streamlit run main.py
+# =============================================================================
+
 import streamlit as st
 
 from config import SECTOR_CONFIG
