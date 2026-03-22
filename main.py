@@ -197,7 +197,7 @@ with st.sidebar:
 
         st.markdown("---")
 
-        # 입력 폼 (종목명 텍스트박스 제거 — 자동 처리)
+        # 입력 폼 (종목명 자동 처리 — 텍스트박스 없음)
         nw = st.number_input(
             "비중(%)",
             min_value=0.1, max_value=100.0,
