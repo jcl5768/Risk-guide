@@ -214,30 +214,25 @@ def _action_plan(fw):
 def render_main_page():
     st.markdown(
         '<div style="margin-bottom:20px;">'
-        '<h2 style="font-size:24px;font-weight:700;color:#1A1D23;margin:0;">오늘의 포트폴리오 현황</h2>'
-        '<p style="font-size:13px;color:#6B7280;margin:4px 0 0;">섹터별 맞춤 거시지표 기반 통계적 승률 분석</p>'
+        '<h2 style="font-size:22px;font-weight:700;color:#1A1D23;margin:0;">📊 포트폴리오 현황</h2>'
+        '<p style="font-size:13px;color:#6B7280;margin:4px 0 0;">섹터 드라이버 가중 Z-Score 기반 승률 분석</p>'
         '</div>',
         unsafe_allow_html=True
     )
 
-    # ── 주요 거시 지표 (이미지처럼 큼직하게) ─────────────────────────────
+    # 거시 지표
     st.markdown('<div class="section-hdr">📡 주요 거시 지표</div>', unsafe_allow_html=True)
     mc = st.columns(5)
     for col, (label, sym, desc) in zip(mc, MACRO_INDICATORS):
         z, price = get_z_and_price(sym)
-        arrow = "▼" if z < -0.2 else "▲" if z > 0.2 else "—"
-        ac    = "#DC2626" if z < -0.2 else "#059669" if z > 0.2 else "#6B7280"
-        val_color = zcolor(z)
+        arrow = "▲" if z > 0.2 else "▼" if z < -0.2 else "—"
+        ac    = "#059669" if z > 0.2 else "#DC2626" if z < -0.2 else "#6B7280"
         col.markdown(
-            f'<div class="macro-card" style="padding:18px 20px;min-height:100px;">'
-            f'<div style="font-size:11px;font-weight:600;color:#6B7280;margin-bottom:8px;">{label}</div>'
-            f'<div style="display:flex;align-items:center;gap:6px;">'
-            f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:22px;font-weight:700;color:{val_color};">'
-            f'{price:,.2f}</span>'
-            f'<span style="font-size:16px;color:{ac};">{"▼" if z<-0.2 else "▲" if z>0.2 else ""}</span>'
-            f'</div>'
-            f'<div style="font-size:11px;color:#9CA3AF;margin-top:6px;">'
-            f'Z {z:+.2f}σ · {desc}</div></div>',
+            f'<div class="macro-card">'
+            f'<div style="font-size:10px;font-weight:600;color:#6B7280;margin-bottom:4px;">{label}</div>'
+            f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:19px;font-weight:700;color:{zcolor(z)};">'
+            f'{price:,.2f} <span style="font-size:13px;color:{ac};">{arrow}</span></div>'
+            f'<div style="font-size:10px;color:#9CA3AF;margin-top:2px;">Z {z:+.2f}σ · {desc}</div></div>',
             unsafe_allow_html=True
         )
 
@@ -245,23 +240,16 @@ def render_main_page():
     portfolio = st.session_state.portfolio
 
     if not portfolio:
-        # 종목 없을 때 — 종목 추가 버튼 포함
         st.markdown(
             '<div style="background:#FFFFFF;border:2px dashed #D1D5DB;border-radius:12px;'
             'padding:48px;text-align:center;">'
             '<div style="font-size:36px;margin-bottom:10px;">📭</div>'
             '<div style="font-size:16px;font-weight:600;color:#374151;margin-bottom:6px;">아직 종목이 없습니다</div>'
-            '<div style="font-size:13px;color:#9CA3AF;">아래 버튼 또는 왼쪽 사이드바에서 종목을 추가하세요.</div>'
+            '<div style="font-size:13px;color:#9CA3AF;">왼쪽 사이드바에서 <b>➕ 종목 추가</b>를 눌러주세요.</div>'
             '<div style="font-size:11px;color:#D1D5DB;margin-top:8px;">예시: AAPL · TSLA · NVDA · XOM · JPM</div>'
             '</div>',
             unsafe_allow_html=True
         )
-        st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
-        col_c = st.columns([2,2,2])
-        with col_c[1]:
-            if st.button("➕  종목 추가", use_container_width=True, key="main_add_btn"):
-                st.session_state.show_add = True
-                st.rerun()
         return
 
     st.markdown(
@@ -392,25 +380,25 @@ def render_detail_page():
     interp_bg, interp_border, interp_icon, interp_title, interp_body, interp_clr = \
         _win_rate_interpretation(fw, inds, zs, weighted_z)
 
-    # ── 헤더 (3번째 사진 스타일) ─────────────────────────────────────────
-    # 상단 바 (섹터 색상)
-    st.markdown(
-        f'<div style="height:4px;background:{cfg["color"]};border-radius:2px;margin-bottom:16px;"></div>',
-        unsafe_allow_html=True
-    )
+    # ── AI 요약용 상위 드라이버 추출 ─────────────────────────────────
+    top_pos_inds = sorted([i for i in inds if i["z"]*i["direction"] > 0],
+                          key=lambda x: x["z"]*x["driver_weight"], reverse=True)
+    top_neg_inds = sorted([i for i in inds if i["z"]*i["direction"] < 0],
+                          key=lambda x: abs(x["z"]*x["driver_weight"]), reverse=True)
 
-    hl, hr = st.columns([2, 1])
-    with hl:
+    # ── 헤더 (사진과 동일한 레이아웃) ────────────────────────────────
+    # 상단: 뒤로가기 + 티커명 + 신호 배지
+    nav_l, nav_r = st.columns([3, 1])
+    with nav_l:
         st.markdown(
-            f'<div style="margin-bottom:8px;">'
             f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">'
-            f'<h1 style="font-size:28px;font-weight:700;color:#1A1D23;margin:0;">{target} {cfg["icon"]}</h1>'
+            f'<span style="font-size:22px;font-weight:700;color:#1A1D23;">{target}</span>'
+            f'<span style="font-size:20px;">{cfg["icon"]}</span>'
             f'</div>'
-            f'<div style="font-size:12px;color:#9CA3AF;margin-bottom:8px;">{cfg["label"]} 섹터</div>'
-            f'</div>',
+            f'<div style="font-size:12px;color:#9CA3AF;">{cfg["label"]} 섹터</div>',
             unsafe_allow_html=True
         )
-    with hr:
+    with nav_r:
         st.markdown(
             f'<div style="text-align:right;padding-top:4px;">'
             f'<div class="{sc_}" style="display:inline-block;">{st_}</div>'
@@ -418,64 +406,41 @@ def render_detail_page():
             unsafe_allow_html=True
         )
 
-    # 오늘의 승률 + 가격 (큼직하게)
-    wl, wr = st.columns([1, 1])
+    # 섹터 색상 구분선
+    st.markdown(
+        f'<div style="height:3px;background:{cfg["color"]};border-radius:2px;'
+        f'margin:10px 0 14px 0;"></div>',
+        unsafe_allow_html=True
+    )
+
+    # 승률 + 가격 영역 (사진: 왼쪽 큰 승률%, 오른쪽 가격+Z+주수)
+    wl, wr = st.columns([3, 2])
     with wl:
         st.markdown(
-            f'<div style="margin-bottom:12px;">'
-            f'<div style="font-size:12px;color:#9CA3AF;margin-bottom:4px;">오늘의 승률</div>'
-            f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:56px;font-weight:700;'
-            f'color:{cfg["color"]};line-height:1;">{fw}%</div>'
-            f'<div style="font-size:12px;color:#6B7280;margin-top:4px;">'
-            f'뉴스 보정 {nb:+.1f}% · 수익률 <span style="color:{pc};">{"+"if pnl>=0 else ""}{pnl:.1f}%</span></div>'
-            f'</div>',
+            f'<div style="margin-bottom:4px;">'
+            f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:2px;">오늘의 승률</div>'
+            f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:52px;font-weight:700;'
+            f'color:{cfg["color"]};line-height:1.1;">{fw}%</div>'
+            f'<div style="font-size:12px;color:#6B7280;margin-top:6px;">'
+            f'뉴스 보정 <b>{nb:+.1f}%</b> · 수익률 '
+            f'<b style="color:{pc};">{"+"if pnl>=0 else ""}{pnl:.1f}%</b>'
+            f'</div></div>',
             unsafe_allow_html=True
         )
     with wr:
+        zs_clr = zcolor(zs)
         st.markdown(
             f'<div style="text-align:right;padding-top:8px;">'
-            f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:28px;font-weight:700;color:#1A1D23;">'
-            f'${price:.2f}</div>'
-            f'<div style="font-size:12px;color:{zcolor(zs)};font-weight:600;margin-top:2px;">'
+            f'<div style="font-size:24px;font-weight:700;color:#1A1D23;">${price:.2f}</div>'
+            f'<div style="font-size:13px;font-weight:600;color:{zs_clr};margin-top:2px;">'
             f'Z {zs:+.2f}σ</div>'
-            f'<div style="font-size:11px;color:#9CA3AF;margin-top:2px;">'
+            f'<div style="font-size:11px;color:#9CA3AF;margin-top:3px;">'
             f'{si.get("shares",0)}주 · 평균 ${si["avg_price"]:.2f}</div>'
             f'</div>',
             unsafe_allow_html=True
         )
 
-    # AI 요약 카드 (기상도 스타일)
-    top_pos_inds = sorted([i for i in inds if i["z"]*i["direction"]>0],
-                          key=lambda x: x["z"]*x["driver_weight"], reverse=True)
-    top_neg_inds = sorted([i for i in inds if i["z"]*i["direction"]<0],
-                          key=lambda x: abs(x["z"]*x["driver_weight"]), reverse=True)
-    ai_pos = top_pos_inds[0]["name"] if top_pos_inds else None
-    ai_neg = top_neg_inds[0]["name"] if top_neg_inds else None
-    ai_lines = ""
-    if ai_pos: ai_lines += f'<div style="color:#059669;font-weight:600;">▲ {ai_pos} 긍정적</div>'
-    if ai_neg: ai_lines += f'<div style="color:#DC2626;font-weight:600;">▼ {ai_neg} 리스크</div>'
-
-    st.markdown(
-        f'<div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:10px;'
-        f'padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">'
-        f'<div style="font-size:13px;font-weight:600;color:#1A1D23;">AI 요약</div>'
-        f'<div style="font-size:13px;">{ai_lines}</div>'
-        f'</div>',
-        unsafe_allow_html=True
-    ) if ai_lines else None
-
-    # 승률 해석 상세 텍스트
-    st.markdown(
-        f'<div style="background:{interp_bg};border:1px solid {interp_border};'
-        f'border-radius:8px;padding:12px 16px;margin:0 0 16px;">'
-        f'<div style="font-size:12px;color:{interp_clr};font-weight:600;margin-bottom:4px;">'
-        f'{interp_icon} {interp_title}</div>'
-        f'<div style="font-size:12px;color:#374151;line-height:1.7;">{interp_body}</div>'
-        f'</div>',
-        unsafe_allow_html=True
-    )
-
-    # ── 탭 ───────────────────────────────────────────────────────────
+    # ── 탭 (사진: 기상도 / 지표 / 뉴스 / 시뮬) ──────────────────────
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "🌡️ 기상도",
         f"📊 지표",
@@ -484,38 +449,86 @@ def render_detail_page():
         "🧮 계산 근거",
     ])
 
-    # ── TAB 1: 기상도 (차트) ────────────────────────────────────────── ─
+    # ── TAB 1: 기상도 ────────────────────────────────────────────────
     with tab1:
+        # ── 게이지 + AI 요약 카드 (사진 상단) ──────────────────────────
+        gauge_col, ai_col = st.columns([1, 1])
+
+        with gauge_col:
+            # Plotly 게이지 (반원형)
+            gauge_fig = go.Figure(go.Indicator(
+                mode="gauge+number",
+                value=fw,
+                number={"suffix": "%", "font": {"size": 36, "color": cfg["color"],
+                                                 "family": "JetBrains Mono"}},
+                gauge={
+                    "axis": {"range": [0, 100], "tickwidth": 0, "showticklabels": False},
+                    "bar": {"color": cfg["color"], "thickness": 0.25},
+                    "bgcolor": "#F3F4F6",
+                    "borderwidth": 0,
+                    "steps": [
+                        {"range": [0, 45],  "color": "rgba(220,38,38,0.08)"},
+                        {"range": [45, 60], "color": "rgba(217,119,6,0.08)"},
+                        {"range": [60, 100],"color": "rgba(5,150,105,0.08)"},
+                    ],
+                    "threshold": {"line": {"color": cfg["color"], "width": 3},
+                                  "thickness": 0.75, "value": fw},
+                },
+                title={"text": "승률", "font": {"size": 13, "color": "#9CA3AF"}},
+                domain={"x": [0, 1], "y": [0, 1]},
+            ))
+            gauge_fig.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                margin=dict(t=20, b=0, l=10, r=10),
+                height=180,
+            )
+            st.plotly_chart(gauge_fig, use_container_width=True)
+
+        with ai_col:
+            # AI 요약 카드 (사진 오른쪽)
+            ai_lines_html = ""
+            for ind in top_pos_inds[:2]:
+                ai_lines_html += (
+                    f'<div style="color:#059669;font-size:14px;font-weight:600;margin-bottom:4px;">'
+                    f'▲ {ind["name"]} 긍정적</div>'
+                )
+            for ind in top_neg_inds[:2]:
+                ai_lines_html += (
+                    f'<div style="color:#DC2626;font-size:14px;font-weight:600;margin-bottom:4px;">'
+                    f'▼ {ind["name"]} 리스크</div>'
+                )
+            st.markdown(
+                f'<div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:12px;'
+                f'padding:16px 18px;margin-top:20px;">'
+                f'<div style="font-size:13px;font-weight:700;color:#1A1D23;margin-bottom:10px;">'
+                f'AI 요약</div>'
+                f'{ai_lines_html}'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+        st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+
+        # ── 60일 가격 추이 차트 (기본 표시) + 기간 선택 ─────────────────
         pk = st.session_state.chart_period
 
-        # 차트 데이터
         with st.spinner(""):
             df    = get_chart_data(target, pk)
             stats = get_price_stats(df)
 
-        # KPI 4개 맨 위
-        kc = st.columns(4)
-        for col, (lbl, val, clr) in zip(kc, [
-            ("현재가",  f"${price:.2f}",     "#1A1D23"),
-            ("주가 Z",  f"{zs:+.2f}σ",       zcolor(zs)),
-            ("뉴스",    f"{nb:+.1f}%",        "#059669" if nb > 0 else "#DC2626"),
-            ("수익률",  f"{'+'if pnl>=0 else ''}{pnl:.1f}%", pc),
-        ]):
-            col.markdown(
-                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;'
-                f'padding:10px;text-align:center;margin-bottom:12px;">'
-                f'<div style="font-size:10px;color:#9CA3AF;font-weight:500;letter-spacing:0.5px;'
-                f'text-transform:uppercase;margin-bottom:3px;">{lbl}</div>'
-                f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:16px;'
-                f'font-weight:700;color:{clr};">{val}</div></div>',
-                unsafe_allow_html=True
-            )
+        # 차트 카드
+        st.markdown(
+            f'<div style="font-size:12px;color:#9CA3AF;margin-bottom:6px;">'
+            f'{pk} 가격 추이</div>',
+            unsafe_allow_html=True
+        )
 
-        # 메인 차트 — 기간 버튼 없이 바로 차트
         if not df.empty and "Close" in df.columns:
-            r, g, b = int(sv_[1:3], 16), int(sv_[3:5], 16), int(sv_[5:7], 16)
+            r2 = int(cfg["color"][1:3], 16)
+            g2 = int(cfg["color"][3:5], 16)
+            b2 = int(cfg["color"][5:7], 16)
 
-            if pk in ("1달", "1년") and all(c in df.columns for c in ["Open", "High", "Low", "Close"]):
+            if pk in ("1달", "1년") and all(c in df.columns for c in ["Open","High","Low","Close"]):
                 chart_fig = go.Figure()
                 chart_fig.add_trace(go.Candlestick(
                     x=df["Date"], open=df["Open"], high=df["High"],
@@ -524,124 +537,89 @@ def render_detail_page():
                     increasing_fillcolor="rgba(5,150,105,0.8)",
                     decreasing_fillcolor="rgba(220,38,38,0.8)",
                     name=target,
+                    hoverinfo="x+text",
                     hovertext=df.apply(
                         lambda row: f"O ${row['Open']:.2f}  H ${row['High']:.2f}<br>"
                                     f"L ${row['Low']:.2f}  C ${row['Close']:.2f}", axis=1
                     ),
-                    hoverinfo="x+text",
                 ))
                 if len(df) >= 20:
-                    ma20 = df["Close"].rolling(20).mean()
                     chart_fig.add_trace(go.Scatter(
-                        x=df["Date"], y=ma20, mode="lines",
-                        line=dict(color="#D97706", width=1.5, dash="dash"), name="MA20"
-                    ))
-                if len(df) >= 60:
-                    ma60 = df["Close"].rolling(60).mean()
-                    chart_fig.add_trace(go.Scatter(
-                        x=df["Date"], y=ma60, mode="lines",
-                        line=dict(color="#7C3AED", width=1.2, dash="dot"), name="MA60"
+                        x=df["Date"], y=df["Close"].rolling(20).mean(), mode="lines",
+                        line=dict(color=cfg["color"], width=1.5, dash="dash"), name="MA20"
                     ))
             else:
                 chart_fig = go.Figure()
                 chart_fig.add_trace(go.Scatter(
                     x=df["Date"], y=df["Close"], mode="lines",
-                    line=dict(color=sv_, width=2, shape="spline", smoothing=0.5),
-                    fill="tozeroy", fillcolor=f"rgba({r},{g},{b},0.07)",
+                    line=dict(color=cfg["color"], width=2, shape="spline", smoothing=0.4),
+                    fill="tozeroy",
+                    fillcolor=f"rgba({r2},{g2},{b2},0.10)",
                     name=target,
                     hovertemplate="$%{y:.2f}  %{x}<extra></extra>",
                 ))
+                if len(df) >= 20:
+                    chart_fig.add_trace(go.Scatter(
+                        x=df["Date"], y=df["Close"].rolling(20).mean(), mode="lines",
+                        line=dict(color=cfg["color"], width=1.2, dash="dash"), name="MA20",
+                        opacity=0.7,
+                    ))
 
             chart_fig.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
                 font=dict(color="#9CA3AF", size=11),
-                xaxis=dict(
-                    showgrid=False, color="#E8EAED",
-                    rangeslider=dict(visible=False),
-                    tickfont=dict(size=10, color="#9CA3AF"),
-                ),
-                yaxis=dict(
-                    showgrid=True, gridcolor="rgba(232,234,237,0.6)",
-                    gridwidth=0.5, color="#9CA3AF",
-                    tickfont=dict(size=10),
-                ),
-                legend=dict(
-                    bgcolor="rgba(0,0,0,0)", font=dict(size=11),
-                    orientation="h", y=1.02, x=0
-                ),
-                margin=dict(t=8, b=4, l=0, r=0),   # ← 여백 최소화
-                height=340,
+                xaxis=dict(showgrid=False, rangeslider=dict(visible=False),
+                           tickfont=dict(size=10, color="#9CA3AF")),
+                yaxis=dict(showgrid=True, gridcolor="rgba(232,234,237,0.5)",
+                           tickfont=dict(size=10, color="#9CA3AF")),
+                legend=dict(bgcolor="rgba(0,0,0,0)", font=dict(size=11),
+                            orientation="h", y=1.02, x=0),
+                margin=dict(t=8, b=4, l=0, r=0),
+                height=260,
                 hovermode="x unified",
             )
             st.plotly_chart(chart_fig, use_container_width=True)
 
-            # 거래량 (여백 없이 바로 아래)
-            if "Volume" in df.columns and df["Volume"].sum() > 0:
-                vol_colors = [
-                    "#059669" if i > 0 and df["Close"].iloc[i] >= df["Close"].iloc[i-1]
-                    else "#DC2626" if i > 0 else "#9CA3AF"
-                    for i in range(len(df))
-                ]
-                vol_fig = go.Figure(go.Bar(
-                    x=df["Date"], y=df["Volume"],
-                    marker_color=vol_colors, opacity=0.55,
-                    hovertemplate="%{x}<br>거래량: %{y:,.0f}<extra></extra>",
-                ))
-                vol_fig.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                    xaxis=dict(showgrid=False, tickfont=dict(size=9, color="#9CA3AF")),
-                    yaxis=dict(showgrid=False, tickformat=".2s", tickfont=dict(size=9, color="#9CA3AF")),
-                    margin=dict(t=0, b=4, l=0, r=0),
-                    height=60, showlegend=False,
-                )
-                st.plotly_chart(vol_fig, use_container_width=True)
-
-            # ── 기간 선택 버튼 — 차트 아래 (작은 버튼) ──────────────────
-            st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
-            p_cols = st.columns([1, 1, 1, 1, 8])
-            for idx, label in enumerate(["1일", "1주", "1달", "1년"]):
-                with p_cols[idx]:
-                    if st.button(
-                        label,
-                        key=f"p_{label}",
-                        use_container_width=True,
-                        type="primary" if pk == label else "secondary"
-                    ):
-                        st.session_state.chart_period = label
-                        st.rerun()
-
-            # 스탯 카드 6개 — 기간 버튼 아래
-            st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
-            s_cols = st.columns(6)
-            stat_items = [
-                ("기간 수익률",   f"{'+'if stats['period_ret']>=0 else ''}{stats['period_ret']:.1f}%",
-                 "#059669" if stats["period_ret"] >= 0 else "#DC2626"),
-                ("최대 상승(봉)", f"+{stats['max_gain']:.2f}%",  "#059669"),
-                ("최대 하락(봉)", f"{stats['max_loss']:.2f}%",   "#DC2626"),
-                ("연환산 변동성", f"{stats['volatility']:.1f}%", "#D97706"),
-                ("기간 최고가",   f"${stats['high']:.2f}",        "#1A1D23"),
-                ("기간 최저가",   f"${stats['low']:.2f}",         "#1A1D23"),
-            ]
-            for col, (lbl, val, clr) in zip(s_cols, stat_items):
-                col.markdown(
-                    f'<div class="stat-box">'
-                    f'<div style="font-size:9px;color:#9CA3AF;font-weight:500;letter-spacing:0.5px;'
-                    f'text-transform:uppercase;margin-bottom:3px;">{lbl}</div>'
-                    f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:13px;'
-                    f'font-weight:700;color:{clr};">{val}</div></div>',
-                    unsafe_allow_html=True
-                )
-
+            # 범례 텍스트 (사진: — 종가  — MA20)
+            st.markdown(
+                f'<div style="text-align:right;font-size:11px;color:{cfg["color"]};'
+                f'margin-top:-8px;margin-bottom:6px;">'
+                f'— 종가 &nbsp; — MA20</div>',
+                unsafe_allow_html=True
+            )
         else:
             st.info("차트 데이터를 불러올 수 없습니다.")
-            # 기간 버튼은 데이터 없어도 표시
-            p_cols2 = st.columns([1, 1, 1, 1, 8])
-            for idx, label in enumerate(["1일", "1주", "1달", "1년"]):
-                with p_cols2[idx]:
-                    if st.button(label, key=f"p2_{label}", use_container_width=True,
-                                 type="primary" if pk == label else "secondary"):
-                        st.session_state.chart_period = label
-                        st.rerun()
+
+        # ── 기간 버튼 — 차트 바로 아래 작은 버튼 ────────────────────────
+        pb_cols = st.columns([1, 1, 1, 1, 8])
+        for idx, label in enumerate(["1일", "1주", "1달", "1년"]):
+            with pb_cols[idx]:
+                if st.button(
+                    label, key=f"p_{label}",
+                    use_container_width=True,
+                    type="primary" if pk == label else "secondary"
+                ):
+                    st.session_state.chart_period = label
+                    st.rerun()
+
+        # ── KPI 4개 — 사진 맨 아래 (현재가/주가Z/뉴스/수익률) ────────────
+        st.markdown("<div style='height:10px;'></div>", unsafe_allow_html=True)
+        kc = st.columns(4)
+        for col, (lbl, val, clr) in zip(kc, [
+            ("현재가",  f"${price:.2f}",                               "#1A1D23"),
+            ("주가 Z",  f"{zs:+.2f}σ",                                 zcolor(zs)),
+            ("뉴스",    f"{nb:+.1f}%",   "#059669" if nb > 0 else "#DC2626"),
+            ("수익률",  f"{'+'if pnl>=0 else ''}{pnl:.1f}%",           pc),
+        ]):
+            col.markdown(
+                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
+                f'padding:12px 10px;text-align:center;">'
+                f'<div style="font-size:10px;color:#9CA3AF;font-weight:500;'
+                f'letter-spacing:0.5px;text-transform:uppercase;margin-bottom:4px;">{lbl}</div>'
+                f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:15px;'
+                f'font-weight:700;color:{clr};">{val}</div></div>',
+                unsafe_allow_html=True
+            )
 
     # ── TAB 2: 섹터 지표 & 리스크 드라이버 ──────────────────────────
     with tab2:
@@ -833,7 +811,8 @@ def render_detail_page():
             # 감성 요약 바
             st.markdown(
                 f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;'
-                f'padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">'
+                f'padding:12px 16px;margin-bottom:18px;display:flex;align-items:center;'
+                f'gap:16px;flex-wrap:wrap;">'
                 f'<span style="font-size:11px;color:#6B7280;">감성 분포 ({len(ko_news)}건)</span>'
                 f'<span style="color:#059669;font-size:12px;font-weight:600;">▲ 긍정 {pos_c}건</span>'
                 f'<span style="color:#DC2626;font-size:12px;font-weight:600;">▼ 부정 {neg_c}건</span>'
@@ -844,69 +823,70 @@ def render_detail_page():
                 unsafe_allow_html=True
             )
 
-            # ── 섹션 1: 올해 가장 영향력 있는 뉴스 (감성 강도 상위) ──────
-            st.markdown(
-                '<div class="section-hdr">🔥 올해 가장 영향력 있는 주요 뉴스</div>',
-                unsafe_allow_html=True
-            )
-            # 긍/부정 중 감성이 뚜렷한 것 우선, 중립은 뒤로
+            # 감성 뚜렷한 것 우선 정렬 (Positive/Negative > Neutral)
             sorted_news = sorted(
                 ko_news,
-                key=lambda x: (0 if x["sentiment"] != "Neutral" else 1, x.get("pub_date", ""))
+                key=lambda x: (0 if x["sentiment"] != "Neutral" else 1)
             )
-            top_news = sorted_news[:3]  # 상위 3개
-            for n in top_news:
-                css  = "news-pos" if n["sentiment"]=="Positive" else "news-neg" if n["sentiment"]=="Negative" else "news-neu"
+
+            def _news_card(n, is_top=False):
+                css  = ("news-pos" if n["sentiment"]=="Positive"
+                        else "news-neg" if n["sentiment"]=="Negative" else "news-neu")
                 icon = "▲" if n["sentiment"]=="Positive" else "▼" if n["sentiment"]=="Negative" else "●"
-                tc   = "#059669" if n["sentiment"]=="Positive" else "#DC2626" if n["sentiment"]=="Negative" else "#9CA3AF"
-                pub  = f'<span style="color:#9CA3AF;font-size:10px;margin-left:8px;">{n.get("pub_date","")}</span>' if n.get("pub_date") else ""
-                src  = f'<span style="color:#9CA3AF;font-size:10px;">{n.get("source","")}</span>' if n.get("source") else ""
+                tc   = ("#059669" if n["sentiment"]=="Positive"
+                        else "#DC2626" if n["sentiment"]=="Negative" else "#9CA3AF")
+                pub  = (f'<span style="color:#9CA3AF;font-size:10px;margin-left:8px;">'
+                        f'{n.get("pub_date","")}</span>') if n.get("pub_date") else ""
+                src  = (f'<span style="color:#9CA3AF;font-size:10px;">'
+                        f'{n.get("source","")}</span>') if n.get("source") else ""
+                weight = "700" if is_top else "500"
+                size   = "14px" if is_top else "13px"
                 st.markdown(
                     f'<div class="{css}" style="margin-bottom:10px;">'
-                    f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
-                    f'<span style="font-size:10px;color:{tc};font-weight:700;">{icon} 주요 뉴스</span>'
+                    f'<div style="display:flex;justify-content:space-between;'
+                    f'align-items:center;margin-bottom:5px;">'
+                    f'<span style="font-size:10px;color:{tc};font-weight:700;">'
+                    f'{icon} {"주요" if is_top else n["sentiment"].upper()}</span>'
                     f'<div>{src}{pub}</div></div>'
                     f'<a href="{n["link"]}" target="_blank" '
-                    f'style="font-size:13px;color:#1A1D23;text-decoration:none;font-weight:600;line-height:1.5;">'
+                    f'style="font-size:{size};color:#1A1D23;text-decoration:none;'
+                    f'font-weight:{weight};line-height:1.6;">'
                     f'{n["title"]}</a></div>',
                     unsafe_allow_html=True
                 )
 
-            # ── 섹션 2: 최근 주요 뉴스 ────────────────────────────────────
-            st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+            # ── 섹션 1: 올해 가장 영향력 있는 뉴스 ──────────────────────
             st.markdown(
-                '<div class="section-hdr">📋 최근 주요 뉴스</div>',
+                '<div style="font-size:11px;font-weight:700;color:#374151;'
+                'letter-spacing:0.5px;text-transform:uppercase;'
+                'border-bottom:1px solid #E8EAED;padding-bottom:8px;margin-bottom:12px;">'
+                '🔥 올해 가장 영향력 있는 뉴스</div>',
                 unsafe_allow_html=True
             )
-            recent_news = sorted_news[3:]  # 나머지
+            top_news = sorted_news[:3]
+            for n in top_news:
+                _news_card(n, is_top=True)
+
+            # ── 섹션 2: 최근 주요 뉴스 ───────────────────────────────────
+            recent_news = sorted_news[3:]
             if recent_news:
-                for n in recent_news:
-                    css  = "news-pos" if n["sentiment"]=="Positive" else "news-neg" if n["sentiment"]=="Negative" else "news-neu"
-                    icon = "▲" if n["sentiment"]=="Positive" else "▼" if n["sentiment"]=="Negative" else "●"
-                    tc   = "#059669" if n["sentiment"]=="Positive" else "#DC2626" if n["sentiment"]=="Negative" else "#9CA3AF"
-                    pub  = f'<span style="color:#9CA3AF;font-size:10px;margin-left:8px;">{n.get("pub_date","")}</span>' if n.get("pub_date") else ""
-                    src  = f'<span style="color:#9CA3AF;font-size:10px;">{n.get("source","")}</span>' if n.get("source") else ""
-                    st.markdown(
-                        f'<div class="{css}" style="margin-bottom:8px;">'
-                        f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
-                        f'<span style="font-size:10px;color:{tc};font-weight:600;">{icon} {n["sentiment"].upper()}</span>'
-                        f'<div>{src}{pub}</div></div>'
-                        f'<a href="{n["link"]}" target="_blank" '
-                        f'style="font-size:13px;color:#1A1D23;text-decoration:none;font-weight:500;line-height:1.5;">'
-                        f'{n["title"]}</a></div>',
-                        unsafe_allow_html=True
-                    )
-            else:
                 st.markdown(
-                    '<div style="font-size:12px;color:#9CA3AF;padding:8px;">추가 뉴스가 없습니다.</div>',
+                    '<div style="font-size:11px;font-weight:700;color:#374151;'
+                    'letter-spacing:0.5px;text-transform:uppercase;'
+                    'border-bottom:1px solid #E8EAED;padding-bottom:8px;'
+                    'margin-top:20px;margin-bottom:12px;">'
+                    '📋 최근 주요 뉴스</div>',
                     unsafe_allow_html=True
                 )
+                for n in recent_news:
+                    _news_card(n, is_top=False)
         else:
             st.markdown(
                 '<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;'
                 'padding:20px;text-align:center;">'
                 '<div style="font-size:20px;margin-bottom:8px;">📰</div>'
-                '<div style="font-size:13px;color:#D97706;font-weight:600;">뉴스를 불러올 수 없습니다</div>'
+                '<div style="font-size:13px;color:#D97706;font-weight:600;">'
+                '뉴스를 불러올 수 없습니다</div>'
                 '<div style="font-size:12px;color:#9CA3AF;margin-top:4px;">'
                 '네트워크 연결을 확인하거나 잠시 후 다시 시도해주세요</div></div>',
                 unsafe_allow_html=True
