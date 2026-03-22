@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from config import SECTOR_CONFIG, MACRO_INDICATORS, SENSITIVITY_COLOR, SENSITIVITY_LABEL
 from engine import (
     detect_sector, get_z_and_price, get_sector_analysis,
-    get_price_history, get_news, get_korean_news, get_yearly_top_news,
+    get_price_history, get_news, get_korean_news,
     get_macro_correlation, get_chart_data, get_price_stats,
     calc_win_rate, get_weighted_z,
     get_signal, zcolor, zdesc, corr_color,
@@ -15,60 +15,47 @@ def apply_custom_style():
     st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
-.stApp{background:#F0F2F5;color:#1A1D23;font-family:'Inter',sans-serif;}
-header[data-testid="stHeader"]{background:#F0F2F5;border-bottom:none;box-shadow:none;}
+.stApp{background:#F7F8FA;color:#1A1D23;font-family:'Inter',sans-serif;}
+header[data-testid="stHeader"]{background:#FFFFFF;border-bottom:1px solid #E8EAED;}
 .stDeployButton{display:none;} #MainMenu{display:none;} footer{display:none;}
 section[data-testid="stSidebar"]{background:#FFFFFF;border-right:1px solid #E8EAED;}
-/* 메인 카드들 */
-.macro-card{background:#FFFFFF;border-radius:14px;padding:14px 16px;box-shadow:0 1px 4px rgba(0,0,0,0.07);}
-.stock-card{background:#FFFFFF;border-radius:14px;padding:16px 18px;box-shadow:0 1px 4px rgba(0,0,0,0.07);margin-bottom:8px;}
-.section-hdr{font-size:11px;font-weight:600;color:#9CA3AF;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;}
-/* 상세 헤더 */
-.detail-top{background:#FFFFFF;border-radius:16px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.07);margin-bottom:14px;}
-/* 탭 */
-.stTabs [data-baseweb="tab-list"]{gap:0;background:#E8EAED;border-radius:10px;padding:3px;border:none;}
-.stTabs [data-baseweb="tab"]{height:34px;font-size:13px;font-weight:500;color:#6B7280;border-radius:8px;padding:0 18px;}
-.stTabs [aria-selected="true"]{background:#FFFFFF !important;color:#1A1D23 !important;font-weight:700 !important;box-shadow:0 1px 4px rgba(0,0,0,0.10);}
-/* 차트 카드 */
-.chart-card{background:#FFFFFF;border-radius:14px;padding:16px 16px 8px;box-shadow:0 1px 4px rgba(0,0,0,0.07);margin-bottom:10px;}
-/* KPI */
-.kpi-box{background:#FFFFFF;border-radius:10px;padding:12px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.06);}
-.stat-box{background:#FFFFFF;border-radius:10px;padding:10px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,0.06);}
-/* 배지 */
-.badge-green{background:#E6FAF0;color:#059669;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;display:inline-block;}
-.badge-yellow{background:#FEF9E6;color:#D97706;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;display:inline-block;}
-.badge-red{background:#FEE8E8;color:#DC2626;border-radius:20px;padding:4px 12px;font-size:11px;font-weight:700;display:inline-block;}
+.macro-card{background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;padding:14px 18px;}
+.section-hdr{font-size:11px;font-weight:600;color:#6B7280;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #E8EAED;}
+.stock-card{background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;padding:16px 18px;}
+.badge-green{background:#ECFDF5;color:#059669;border:1px solid #A7F3D0;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;display:inline-block;}
+.badge-yellow{background:#FFFBEB;color:#D97706;border:1px solid #FDE68A;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;display:inline-block;}
+.badge-red{background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;display:inline-block;}
 .lv1{background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;}
 .lv2{background:#FFF7ED;color:#EA580C;border:1px solid #FED7AA;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;}
-/* 지표 카드 */
-.ind-card{background:#FFFFFF;border-radius:12px;padding:12px 14px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.06);}
-.sensitivity-high{background:#FEE8E8;color:#DC2626;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;}
-.sensitivity-mid{background:#FEF9E6;color:#D97706;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;}
-.sensitivity-low{background:#F4F5F7;color:#6B7280;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;}
-/* 뉴스 */
-.news-pos{background:#F0FDF4;border-left:3px solid #059669;padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:8px;}
-.news-neg{background:#FEF2F2;border-left:3px solid #DC2626;padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:8px;}
-.news-neu{background:#F9FAFB;border-left:3px solid #D1D5DB;padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:8px;}
-.news-star{background:#FFFBEB;border-left:3px solid #F59E0B;padding:12px 14px;border-radius:0 10px 10px 0;margin-bottom:8px;}
-/* Action Plan */
+.lv3{background:#F5F3FF;color:#7C3AED;border:1px solid #DDD6FE;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;}
+.news-pos{background:#ECFDF5;border-left:3px solid #059669;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:10px;}
+.news-neg{background:#FEF2F2;border-left:3px solid #DC2626;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:10px;}
+.news-neu{background:#F9FAFB;border-left:3px solid #D1D5DB;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:10px;}
+.ind-card{background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;padding:12px 16px;margin-bottom:8px;}
+.sensitivity-high{background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;}
+.sensitivity-mid{background:#FFFBEB;color:#D97706;border:1px solid #FDE68A;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;}
+.sensitivity-low{background:#F9FAFB;color:#6B7280;border:1px solid #E8EAED;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;}
+.stat-box{background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;padding:10px;text-align:center;}
+/* 기간 선택 버튼 — 선택된 것 강조 */
+.period-btn-active button{background:#1A1D23 !important;color:#FFFFFF !important;border-color:#1A1D23 !important;font-weight:700 !important;}
+/* Action Plan 테이블 */
 .action-table{width:100%;border-collapse:collapse;font-size:12px;}
-.action-table th{background:#F4F5F7;color:#6B7280;font-weight:600;padding:8px 12px;text-align:left;border-bottom:1px solid #E8EAED;}
+.action-table th{background:#F9FAFB;color:#6B7280;font-weight:600;padding:8px 12px;text-align:left;border-bottom:1px solid #E8EAED;}
 .action-table td{padding:10px 12px;border-bottom:1px solid #F3F4F6;color:#374151;vertical-align:top;}
 .action-table tr:last-child td{border-bottom:none;}
-/* 버튼 */
-div[data-testid="stButton"] button{background:#FFFFFF;color:#374151;border:1px solid #E0E2E6;border-radius:8px;font-size:12px;font-weight:500;padding:6px 14px;box-shadow:0 1px 2px rgba(0,0,0,0.05);}
-div[data-testid="stButton"] button:hover{background:#F4F5F7;}
-div[data-testid="stButton"] button[kind="primary"]{background:#1A1D23;color:#FFFFFF;border-color:#1A1D23;}
-div[data-testid="stButton"] button[kind="primary"]:hover{background:#374151;}
-div[data-testid="stNumberInput"] input,div[data-testid="stTextInput"] input{background:#F4F5F7 !important;border:1px solid #E0E2E6 !important;border-radius:8px !important;color:#1A1D23 !important;font-size:13px !important;}
-div[data-testid="stSelectbox"]>div{background:#F4F5F7 !important;border:1px solid #E0E2E6 !important;border-radius:8px !important;}
+div[data-testid="stButton"] button{background:#FFFFFF;color:#374151;border:1px solid #D1D5DB;border-radius:7px;font-size:12px;font-weight:500;padding:6px 16px;}
+div[data-testid="stButton"] button:hover{background:#F9FAFB;border-color:#9CA3AF;}
+div[data-testid="stNumberInput"] input,div[data-testid="stTextInput"] input,div[data-testid="stSelectbox"] div{background:#FFFFFF !important;border:1px solid #D1D5DB !important;border-radius:7px !important;color:#1A1D23 !important;font-size:13px !important;}
+.stTabs [data-baseweb="tab-list"]{gap:2px;background:#F3F4F6;border-radius:8px;padding:3px;border:1px solid #E8EAED;}
+.stTabs [data-baseweb="tab"]{height:32px;font-size:12px;font-weight:500;color:#6B7280;border-radius:6px;padding:0 14px;}
+.stTabs [aria-selected="true"]{background:#FFFFFF !important;color:#1A1D23 !important;box-shadow:0 1px 3px rgba(0,0,0,0.1);}
 .stSlider > div > div > div{background:#2563EB !important;}
 .stSpinner > div{border-top-color:#2563EB !important;}
 </style>
 """, unsafe_allow_html=True)
 
 
-# ── 승률 해석# ── 승률 해석 텍스트 생성 ─────────────────────────────────────────────────────
+# ── 승률 해석 텍스트 생성 ─────────────────────────────────────────────────────
 def _win_rate_interpretation(fw, inds, zs, weighted_z):
     """
     승률 수치에 따른 상황 해석 텍스트 반환.
@@ -225,115 +212,155 @@ def _action_plan(fw):
 
 # ── 메인 대시보드 ─────────────────────────────────────────────────────────────
 def render_main_page():
-    # 타이틀
-    st.markdown('<div style="padding:4px 0 16px;"><div style="font-size:11px;color:#9CA3AF;font-weight:500;letter-spacing:0.5px;text-transform:uppercase;">RISK GUIDE</div><div style="font-size:22px;font-weight:700;color:#1A1D23;margin-top:2px;">포트폴리오 현황</div></div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div style="margin-bottom:20px;">'
+        '<h2 style="font-size:24px;font-weight:700;color:#1A1D23;margin:0;">오늘의 포트폴리오 현황</h2>'
+        '<p style="font-size:13px;color:#6B7280;margin:4px 0 0;">섹터별 맞춤 거시지표 기반 통계적 승률 분석</p>'
+        '</div>',
+        unsafe_allow_html=True
+    )
 
-    # 거시 지표 — 5개 카드
+    # ── 주요 거시 지표 (이미지처럼 큼직하게) ─────────────────────────────
     st.markdown('<div class="section-hdr">📡 주요 거시 지표</div>', unsafe_allow_html=True)
     mc = st.columns(5)
     for col, (label, sym, desc) in zip(mc, MACRO_INDICATORS):
         z, price = get_z_and_price(sym)
-        arrow = "▲" if z > 0.2 else "▼" if z < -0.2 else "—"
-        ac    = "#059669" if z > 0.2 else "#DC2626" if z < -0.2 else "#6B7280"
+        arrow = "▼" if z < -0.2 else "▲" if z > 0.2 else "—"
+        ac    = "#DC2626" if z < -0.2 else "#059669" if z > 0.2 else "#6B7280"
+        val_color = zcolor(z)
         col.markdown(
-            f'<div class="macro-card">'
-            f'<div style="font-size:10px;font-weight:600;color:#9CA3AF;margin-bottom:5px;">{label}</div>'
-            f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:18px;font-weight:700;color:{zcolor(z)};">'
-            f'{price:,.2f} <span style="font-size:12px;color:{ac};">{arrow}</span></div>'
-            f'<div style="font-size:10px;color:#9CA3AF;margin-top:3px;">Z {z:+.2f}σ</div></div>',
-            unsafe_allow_html=True)
+            f'<div class="macro-card" style="padding:18px 20px;min-height:100px;">'
+            f'<div style="font-size:11px;font-weight:600;color:#6B7280;margin-bottom:8px;">{label}</div>'
+            f'<div style="display:flex;align-items:center;gap:6px;">'
+            f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:22px;font-weight:700;color:{val_color};">'
+            f'{price:,.2f}</span>'
+            f'<span style="font-size:16px;color:{ac};">{"▼" if z<-0.2 else "▲" if z>0.2 else ""}</span>'
+            f'</div>'
+            f'<div style="font-size:11px;color:#9CA3AF;margin-top:6px;">'
+            f'Z {z:+.2f}σ · {desc}</div></div>',
+            unsafe_allow_html=True
+        )
 
     st.markdown("<br>", unsafe_allow_html=True)
     portfolio = st.session_state.portfolio
 
     if not portfolio:
+        # 종목 없을 때 — 종목 추가 버튼 포함
         st.markdown(
-            '<div style="background:#FFFFFF;border-radius:16px;padding:56px 24px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,0.07);">'
-            '<div style="font-size:42px;margin-bottom:14px;">📭</div>'
-            '<div style="font-size:18px;font-weight:600;color:#374151;margin-bottom:8px;">아직 종목이 없습니다</div>'
-            '<div style="font-size:13px;color:#9CA3AF;">아래 버튼으로 첫 종목을 추가해보세요</div></div>',
-            unsafe_allow_html=True)
-    else:
-        st.markdown('<div class="section-hdr">📈 보유 종목</div>', unsafe_allow_html=True)
-        for rs in range(0, len(portfolio), 4):
-            row  = portfolio[rs: rs + 4]
-            cols = st.columns(len(row))
-            for col, stock in zip(cols, row):
-                with col:
-                    with st.spinner(""):
-                        zs, price      = get_z_and_price(stock["ticker"])
-                        _, cfg, inds   = get_sector_analysis(stock["ticker"])
-                        nb, _          = get_news(stock["ticker"])
-                        win, breakdown = calc_win_rate(zs, inds, nb)
-                    st_, sc_, sv_ = get_signal(win)
-                    pnl  = ((price - stock["avg_price"]) / stock["avg_price"] * 100) if price and stock["avg_price"] > 0 else None
-                    pnl_t = f"{'+'if pnl>=0 else ''}{pnl:.1f}%" if pnl is not None else "—"
-                    pc    = "#059669" if (pnl or 0) >= 0 else "#DC2626"
-                    ti    = max(inds, key=lambda x: abs(x["z"] * x["driver_weight"]))
-                    tc    = ti["z"] * ti["direction"]
-                    tclr  = "#059669" if tc > 0 else "#DC2626"
-                    wz    = get_weighted_z(inds)
-                    st.markdown(f"""
+            '<div style="background:#FFFFFF;border:2px dashed #D1D5DB;border-radius:12px;'
+            'padding:48px;text-align:center;">'
+            '<div style="font-size:36px;margin-bottom:10px;">📭</div>'
+            '<div style="font-size:16px;font-weight:600;color:#374151;margin-bottom:6px;">아직 종목이 없습니다</div>'
+            '<div style="font-size:13px;color:#9CA3AF;">아래 버튼 또는 왼쪽 사이드바에서 종목을 추가하세요.</div>'
+            '<div style="font-size:11px;color:#D1D5DB;margin-top:8px;">예시: AAPL · TSLA · NVDA · XOM · JPM</div>'
+            '</div>',
+            unsafe_allow_html=True
+        )
+        st.markdown("<div style='height:16px;'></div>", unsafe_allow_html=True)
+        col_c = st.columns([2,2,2])
+        with col_c[1]:
+            if st.button("➕  종목 추가", use_container_width=True, key="main_add_btn"):
+                st.session_state.show_add = True
+                st.rerun()
+        return
+
+    st.markdown(
+        '<div class="section-hdr">📈 보유 종목 분석 '
+        '<span class="lv1" style="margin-left:6px;">Lv.1 / Lv.2</span></div>',
+        unsafe_allow_html=True
+    )
+
+    for rs in range(0, len(portfolio), 4):
+        row  = portfolio[rs: rs + 4]
+        cols = st.columns(len(row))
+        for col, stock in zip(cols, row):
+            with col:
+                with st.spinner(""):
+                    zs, price      = get_z_and_price(stock["ticker"])
+                    _, cfg, inds   = get_sector_analysis(stock["ticker"])
+                    nb, _          = get_news(stock["ticker"])
+                    win, breakdown = calc_win_rate(zs, inds, nb)
+
+                st_, sc_, sv_ = get_signal(win)
+                pnl = ((price - stock["avg_price"]) / stock["avg_price"] * 100) \
+                      if price and stock["avg_price"] > 0 else None
+                pnl_text = f"{'+'if pnl>=0 else ''}{pnl:.1f}%" if pnl is not None else "미입력"
+                pc   = "#059669" if (pnl or 0) >= 0 else "#DC2626"
+                ti   = max(inds, key=lambda x: abs(x["z"] * x["driver_weight"]))
+                tc   = ti["z"] * ti["direction"]
+                tclr = "#059669" if tc > 0 else "#DC2626"
+                weighted_z = get_weighted_z(inds)
+
+                st.markdown(f"""
 <div class="stock-card" style="border-top:3px solid {sv_};">
-  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">
-    <div>
-      <span style="font-weight:700;font-size:16px;color:#1A1D23;">{stock['ticker']}</span>
-      <span style="font-size:12px;color:{cfg['color']};margin-left:5px;">{cfg['icon']}</span>
-      <div style="font-size:11px;color:#9CA3AF;">{stock['name']}</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+        <div><span style="font-weight:700;font-size:15px;color:#1A1D23;">{stock['ticker']}</span>
+        <span style="font-size:11px;color:{cfg['color']};margin-left:4px;">{cfg['icon']}</span>
+        <div style="font-size:10px;color:#9CA3AF;">{stock['name']}</div></div>
+        <div class="{sc_}">{st_}</div>
     </div>
-    <div class="{sc_}">{st_}</div>
-  </div>
-  <div style="display:flex;align-items:baseline;gap:5px;margin-bottom:5px;">
-    <span style="font-family:'JetBrains Mono',monospace;font-size:36px;font-weight:700;color:{sv_};line-height:1;">{win}%</span>
-    <span style="font-size:11px;color:#9CA3AF;">승률</span>
-  </div>
-  <div style="font-size:11px;color:{tclr};margin-bottom:10px;">{'▲' if tc>0 else '▼'} {ti['name']} Z{ti['z']:+.1f}</div>
-  <div style="display:flex;justify-content:space-between;font-size:12px;padding-top:10px;border-top:1px solid #F0F2F5;">
-    <span style="color:#6B7280;">${price:.1f}</span>
-    <span style="color:{pc};font-weight:600;">{pnl_t}</span>
-    <span style="color:#9CA3AF;">{stock['weight']:.1f}%</span>
-  </div>
+    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:2px;">
+        <span style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;
+                     color:{sv_};line-height:1;">{win}%</span>
+        <span style="font-size:10px;color:#9CA3AF;" title="{breakdown['explain']}">승률 ❔</span>
+    </div>
+    <div style="font-size:10px;color:#9CA3AF;margin-bottom:4px;">
+        거시Z <span style="color:{zcolor(weighted_z)};font-weight:600;">{weighted_z:+.2f}</span>
+    </div>
+    <div style="font-size:10px;color:{tclr};margin-bottom:8px;">
+        {'▲' if tc>0 else '▼'} {ti['name']} 핵심 드라이버
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:11px;
+                padding-top:8px;border-top:1px solid #F3F4F6;">
+        <span style="color:#6B7280;">${price:.1f}</span>
+        <span style="color:{pc};font-weight:500;">{pnl_text}</span>
+        <span style="color:#9CA3AF;">{stock['weight']:.1f}%</span>
+    </div>
 </div>""", unsafe_allow_html=True)
-                    if st.button("상세 분석 →", key=f"go_{stock['ticker']}_{rs}"):
-                        st.session_state.selected = stock["ticker"]
-                        st.session_state.page     = "detail"
-                        st.rerun()
+                st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
+                if st.button("상세 분석 →", key=f"go_{stock['ticker']}_{rs}"):
+                    st.session_state.selected = stock["ticker"]
+                    st.session_state.page     = "detail"
+                    st.rerun()
 
-        # 파이 차트
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown('<div class="section-hdr">📊 포트폴리오 구성</div>', unsafe_allow_html=True)
-        cc, bc = st.columns([1, 2])
-        with cc:
-            labels  = [s["ticker"] for s in portfolio]
-            weights = [s["weight"] for s in portfolio]
-            colors  = [SECTOR_CONFIG[detect_sector(s["ticker"])]["color"] for s in portfolio]
-            fig = go.Figure(go.Pie(values=weights,labels=labels,hole=0.62,
-                marker=dict(colors=colors,line=dict(color="#F0F2F5",width=3)),
-                hovertemplate="<b>%{label}</b>  %{value:.1f}%<extra></extra>"))
-            fig.update_layout(paper_bgcolor="rgba(0,0,0,0)",showlegend=False,
-                margin=dict(t=4,b=4,l=4,r=4),height=180,
-                annotations=[dict(text=f"<b>{sum(weights):.1f}%</b>",x=0.5,y=0.5,
-                    font=dict(size=14,color="#1A1D23"),showarrow=False)])
-            st.plotly_chart(fig,use_container_width=True)
-        with bc:
-            for s in portfolio:
-                sc=SECTOR_CONFIG[detect_sector(s["ticker"])]
-                st.markdown(
-                    f'<div style="margin-bottom:10px;">'
-                    f'<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
-                    f'<span style="font-size:13px;font-weight:600;color:#1A1D23;">{s["ticker"]}'
-                    f' <span style="color:{sc["color"]};">{sc["icon"]}</span></span>'
-                    f'<span style="font-size:13px;font-weight:600;color:#2563EB;">{s["weight"]:.1f}%</span></div>'
-                    f'<div style="height:5px;background:#F0F2F5;border-radius:3px;">'
-                    f'<div style="height:100%;width:{min(s["weight"],100)}%;background:{sc["color"]};border-radius:3px;opacity:0.85;"></div></div>'
-                    f'<div style="font-size:11px;color:#9CA3AF;margin-top:2px;">{s["name"]}</div></div>',
-                    unsafe_allow_html=True)
-
-    # 하단 종목 추가 버튼 — 항상 표시
+    # 배분 차트
     st.markdown("<br>", unsafe_allow_html=True)
-    if st.button("➕  종목 추가", use_container_width=True, key="open_add", type="primary"):
-        st.session_state.show_add = True
-        st.rerun()
+    st.markdown('<div class="section-hdr">📊 포트폴리오 구성</div>', unsafe_allow_html=True)
+    cc, bc = st.columns([1, 2])
+    with cc:
+        labels  = [s["ticker"] for s in portfolio]
+        weights = [s["weight"] for s in portfolio]
+        colors  = [SECTOR_CONFIG[detect_sector(s["ticker"])]["color"] for s in portfolio]
+        fig = go.Figure(go.Pie(
+            values=weights, labels=labels, hole=0.6,
+            marker=dict(colors=colors, line=dict(color="#FFFFFF", width=2)),
+            hovertemplate="<b>%{label}</b><br>%{value:.1f}%<extra></extra>",
+        ))
+        fig.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)", showlegend=False,
+            margin=dict(t=10, b=10, l=10, r=10), height=200,
+            annotations=[dict(
+                text=f"<b>{sum(weights):.1f}%</b>", x=0.5, y=0.5,
+                font=dict(size=14, color="#1A1D23"), showarrow=False
+            )]
+        )
+        st.plotly_chart(fig, use_container_width=True)
+    with bc:
+        for s in portfolio:
+            sc = SECTOR_CONFIG[detect_sector(s["ticker"])]
+            st.markdown(
+                f'<div style="margin-bottom:10px;">'
+                f'<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'
+                f'<span style="font-size:13px;font-weight:600;color:#1A1D23;">'
+                f'{s["ticker"]} <span style="font-size:11px;color:{sc["color"]};">'
+                f'{sc["icon"]} {sc["label"]}</span></span>'
+                f'<span style="font-size:13px;font-weight:600;color:#2563EB;">{s["weight"]:.1f}%</span></div>'
+                f'<div style="height:4px;background:#F3F4F6;border-radius:2px;">'
+                f'<div style="height:100%;width:{min(s["weight"],100)}%;'
+                f'background:{sc["color"]};border-radius:2px;opacity:0.8;"></div></div></div>',
+                unsafe_allow_html=True
+            )
+
 
 # ── 상세 분석 페이지 ──────────────────────────────────────────────────────────
 def render_detail_page():
@@ -341,7 +368,9 @@ def render_detail_page():
     if not target:
         st.session_state.page = "main"; st.rerun()
 
-    # 사이드바 버튼 제거 — 상단 뒤로가기 버튼 사용
+    if st.sidebar.button("← 대시보드로", use_container_width=True):
+        st.session_state.page = "main"; st.rerun()
+
     si = next(
         (s for s in st.session_state.portfolio if s["ticker"] == target),
         {"name": target, "weight": "—", "avg_price": 0, "shares": 0}
@@ -359,91 +388,130 @@ def render_detail_page():
           if price and si["avg_price"] > 0 else 0
     pc  = "#059669" if pnl >= 0 else "#DC2626"
 
-    # ── 승률 해석 생성 ─────────────────────────────────────────────
+    # ── 승률 해석 생성 ────────────────────────────────────────────────
     interp_bg, interp_border, interp_icon, interp_title, interp_body, interp_clr = \
         _win_rate_interpretation(fw, inds, zs, weighted_z)
 
-    # ── 앱 스타일 헤더 (3번째 사진) ──────────────────────────────────
-    bk, tt, bd = st.columns([1, 6, 2])
-    with bk:
-        if st.button("←", key="back_detail"):
-            st.session_state.page = "main"; st.rerun()
-    with tt:
-        st.markdown(
-            f'<div style="padding:2px 0;">'
-            f'<div style="font-size:21px;font-weight:700;color:#1A1D23;line-height:1.2;">'
-            f'{target} <span style="font-size:14px;color:{cfg["color"]};">{cfg["icon"]}</span></div>'
-            f'<div style="font-size:12px;color:#9CA3AF;">{cfg["label"]} 섹터</div></div>',
-            unsafe_allow_html=True)
-    with bd:
-        st.markdown(f'<div style="text-align:right;padding-top:4px;"><div class="{sc_}">{st_}</div></div>', unsafe_allow_html=True)
-
-    # 섹터 컬러 구분선
-    st.markdown(f'<div style="height:3px;background:{sv_};border-radius:2px;margin:10px 0 0;"></div>', unsafe_allow_html=True)
-
-    # 승률 + 현재가 헤더 카드
+    # ── 헤더 (3번째 사진 스타일) ─────────────────────────────────────────
+    # 상단 바 (섹터 색상)
     st.markdown(
-        f'<div class="detail-top">'
-        f'<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
-        f'<div>'
-        f'<div style="font-size:11px;color:#9CA3AF;font-weight:500;margin-bottom:3px;">오늘의 승률</div>'
-        f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:54px;font-weight:700;color:{sv_};line-height:1;">{fw}%</div>'
-        f'<div style="font-size:12px;color:#6B7280;margin-top:5px;">'
-        f'뉴스 보정 <b style="color:{"#059669" if nb>0 else "#DC2626"};">{nb:+.1f}%</b>'
-        f' &nbsp;·&nbsp; 수익률 <b style="color:{pc};">{"+"if pnl>=0 else ""}{pnl:.1f}%</b></div>'
-        f'</div>'
-        f'<div style="text-align:right;">'
-        f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:24px;font-weight:700;color:#1A1D23;">${price:.2f}</div>'
-        f'<div style="font-size:13px;color:{zcolor(zs)};margin-top:3px;">Z {zs:+.2f}σ</div>'
-        f'<div style="font-size:11px;color:#9CA3AF;margin-top:3px;">{si.get("shares",0)}주 · 평균 ${si["avg_price"]:.2f}</div>'
-        f'</div></div>'
-        f'<div style="background:{interp_bg};border-left:4px solid {interp_clr};border-radius:0 8px 8px 0;'
-        f'padding:10px 14px;margin-top:14px;">'
-        f'<div style="font-size:11px;font-weight:700;color:{interp_clr};margin-bottom:3px;">{interp_icon} {interp_title}</div>'
-        f'<div style="font-size:12px;color:#374151;line-height:1.6;">{interp_body}</div></div>'
+        f'<div style="height:4px;background:{cfg["color"]};border-radius:2px;margin-bottom:16px;"></div>',
+        unsafe_allow_html=True
+    )
+
+    hl, hr = st.columns([2, 1])
+    with hl:
+        st.markdown(
+            f'<div style="margin-bottom:8px;">'
+            f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:2px;">'
+            f'<h1 style="font-size:28px;font-weight:700;color:#1A1D23;margin:0;">{target} {cfg["icon"]}</h1>'
+            f'</div>'
+            f'<div style="font-size:12px;color:#9CA3AF;margin-bottom:8px;">{cfg["label"]} 섹터</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+    with hr:
+        st.markdown(
+            f'<div style="text-align:right;padding-top:4px;">'
+            f'<div class="{sc_}" style="display:inline-block;">{st_}</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
+    # 오늘의 승률 + 가격 (큼직하게)
+    wl, wr = st.columns([1, 1])
+    with wl:
+        st.markdown(
+            f'<div style="margin-bottom:12px;">'
+            f'<div style="font-size:12px;color:#9CA3AF;margin-bottom:4px;">오늘의 승률</div>'
+            f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:56px;font-weight:700;'
+            f'color:{cfg["color"]};line-height:1;">{fw}%</div>'
+            f'<div style="font-size:12px;color:#6B7280;margin-top:4px;">'
+            f'뉴스 보정 {nb:+.1f}% · 수익률 <span style="color:{pc};">{"+"if pnl>=0 else ""}{pnl:.1f}%</span></div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+    with wr:
+        st.markdown(
+            f'<div style="text-align:right;padding-top:8px;">'
+            f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:28px;font-weight:700;color:#1A1D23;">'
+            f'${price:.2f}</div>'
+            f'<div style="font-size:12px;color:{zcolor(zs)};font-weight:600;margin-top:2px;">'
+            f'Z {zs:+.2f}σ</div>'
+            f'<div style="font-size:11px;color:#9CA3AF;margin-top:2px;">'
+            f'{si.get("shares",0)}주 · 평균 ${si["avg_price"]:.2f}</div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
+    # AI 요약 카드 (기상도 스타일)
+    top_pos_inds = sorted([i for i in inds if i["z"]*i["direction"]>0],
+                          key=lambda x: x["z"]*x["driver_weight"], reverse=True)
+    top_neg_inds = sorted([i for i in inds if i["z"]*i["direction"]<0],
+                          key=lambda x: abs(x["z"]*x["driver_weight"]), reverse=True)
+    ai_pos = top_pos_inds[0]["name"] if top_pos_inds else None
+    ai_neg = top_neg_inds[0]["name"] if top_neg_inds else None
+    ai_lines = ""
+    if ai_pos: ai_lines += f'<div style="color:#059669;font-weight:600;">▲ {ai_pos} 긍정적</div>'
+    if ai_neg: ai_lines += f'<div style="color:#DC2626;font-weight:600;">▼ {ai_neg} 리스크</div>'
+
+    st.markdown(
+        f'<div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:10px;'
+        f'padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">'
+        f'<div style="font-size:13px;font-weight:600;color:#1A1D23;">AI 요약</div>'
+        f'<div style="font-size:13px;">{ai_lines}</div>'
         f'</div>',
-        unsafe_allow_html=True)
+        unsafe_allow_html=True
+    ) if ai_lines else None
 
-    # ── 탭 (4개) ─────────────────────────────────────────────────────
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "🌡️  기상도",
-        f"📊  지표",
-        "📰  뉴스",
-        "🧮  계산",
+    # 승률 해석 상세 텍스트
+    st.markdown(
+        f'<div style="background:{interp_bg};border:1px solid {interp_border};'
+        f'border-radius:8px;padding:12px 16px;margin:0 0 16px;">'
+        f'<div style="font-size:12px;color:{interp_clr};font-weight:600;margin-bottom:4px;">'
+        f'{interp_icon} {interp_title}</div>'
+        f'<div style="font-size:12px;color:#374151;line-height:1.7;">{interp_body}</div>'
+        f'</div>',
+        unsafe_allow_html=True
+    )
+
+    # ── 탭 ───────────────────────────────────────────────────────────
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🌡️ 기상도",
+        f"📊 지표",
+        "🔗 상관 분석",
+        "📰 뉴스",
+        "🧮 계산 근거",
     ])
-    tab5 = tab4  # 하위 호환 (계산 근거는 tab4에)
 
-    # ── TAB 1: 기상도 (차트 + 게이지 + 요약) ─────────────────────────
+    # ── TAB 1: 기상도 (차트) ────────────────────────────────────────── ─
     with tab1:
         pk = st.session_state.chart_period
 
-        # 차트 데이터 먼저 로드
+        # 차트 데이터
         with st.spinner(""):
             df    = get_chart_data(target, pk)
             stats = get_price_stats(df)
 
-        # 스탯 카드 6개
-        s_cols = st.columns(6)
-        stat_items = [
-            ("기간 수익률",    f"{'+'if stats['period_ret']>=0 else ''}{stats['period_ret']:.1f}%",
-             "#059669" if stats["period_ret"] >= 0 else "#DC2626"),
-            ("최대 상승(봉)",  f"+{stats['max_gain']:.2f}%",  "#059669"),
-            ("최대 하락(봉)",  f"{stats['max_loss']:.2f}%",   "#DC2626"),
-            ("연환산 변동성",  f"{stats['volatility']:.1f}%", "#D97706"),
-            ("기간 최고가",    f"${stats['high']:.2f}",        "#1A1D23"),
-            ("기간 최저가",    f"${stats['low']:.2f}",         "#1A1D23"),
-        ]
-        for col, (lbl, val, clr) in zip(s_cols, stat_items):
+        # KPI 4개 맨 위
+        kc = st.columns(4)
+        for col, (lbl, val, clr) in zip(kc, [
+            ("현재가",  f"${price:.2f}",     "#1A1D23"),
+            ("주가 Z",  f"{zs:+.2f}σ",       zcolor(zs)),
+            ("뉴스",    f"{nb:+.1f}%",        "#059669" if nb > 0 else "#DC2626"),
+            ("수익률",  f"{'+'if pnl>=0 else ''}{pnl:.1f}%", pc),
+        ]):
             col.markdown(
-                f'<div class="stat-box">'
-                f'<div style="font-size:9px;color:#9CA3AF;font-weight:500;letter-spacing:0.5px;'
+                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;'
+                f'padding:10px;text-align:center;margin-bottom:12px;">'
+                f'<div style="font-size:10px;color:#9CA3AF;font-weight:500;letter-spacing:0.5px;'
                 f'text-transform:uppercase;margin-bottom:3px;">{lbl}</div>'
-                f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:13px;'
+                f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:16px;'
                 f'font-weight:700;color:{clr};">{val}</div></div>',
                 unsafe_allow_html=True
             )
 
-        # 메인 차트 — 여백 최소화
+        # 메인 차트 — 기간 버튼 없이 바로 차트
         if not df.empty and "Close" in df.columns:
             r, g, b = int(sv_[1:3], 16), int(sv_[3:5], 16), int(sv_[5:7], 16)
 
@@ -527,38 +595,53 @@ def render_detail_page():
                     height=60, showlegend=False,
                 )
                 st.plotly_chart(vol_fig, use_container_width=True)
+
+            # ── 기간 선택 버튼 — 차트 아래 (작은 버튼) ──────────────────
+            st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
+            p_cols = st.columns([1, 1, 1, 1, 8])
+            for idx, label in enumerate(["1일", "1주", "1달", "1년"]):
+                with p_cols[idx]:
+                    if st.button(
+                        label,
+                        key=f"p_{label}",
+                        use_container_width=True,
+                        type="primary" if pk == label else "secondary"
+                    ):
+                        st.session_state.chart_period = label
+                        st.rerun()
+
+            # 스탯 카드 6개 — 기간 버튼 아래
+            st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+            s_cols = st.columns(6)
+            stat_items = [
+                ("기간 수익률",   f"{'+'if stats['period_ret']>=0 else ''}{stats['period_ret']:.1f}%",
+                 "#059669" if stats["period_ret"] >= 0 else "#DC2626"),
+                ("최대 상승(봉)", f"+{stats['max_gain']:.2f}%",  "#059669"),
+                ("최대 하락(봉)", f"{stats['max_loss']:.2f}%",   "#DC2626"),
+                ("연환산 변동성", f"{stats['volatility']:.1f}%", "#D97706"),
+                ("기간 최고가",   f"${stats['high']:.2f}",        "#1A1D23"),
+                ("기간 최저가",   f"${stats['low']:.2f}",         "#1A1D23"),
+            ]
+            for col, (lbl, val, clr) in zip(s_cols, stat_items):
+                col.markdown(
+                    f'<div class="stat-box">'
+                    f'<div style="font-size:9px;color:#9CA3AF;font-weight:500;letter-spacing:0.5px;'
+                    f'text-transform:uppercase;margin-bottom:3px;">{lbl}</div>'
+                    f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:13px;'
+                    f'font-weight:700;color:{clr};">{val}</div></div>',
+                    unsafe_allow_html=True
+                )
+
         else:
             st.info("차트 데이터를 불러올 수 없습니다.")
-
-        # 기간 선택 버튼 — 차트 바로 아래, 작고 밀착
-        pk_now = st.session_state.chart_period
-        p_cols = st.columns([1,1,1,1,8])
-        for idx,(label,pk_key) in enumerate([("일","1일"),("주","1주"),("달","1달"),("년","1년")]):
-            with p_cols[idx]:
-                if st.button(label, key=f"pk_{label}",
-                             use_container_width=True,
-                             type="primary" if pk_now==pk_key else "secondary"):
-                    st.session_state.chart_period=pk_key; st.rerun()
-
-        st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
-
-        # KPI 4개
-        kc = st.columns(4)
-        for col, (lbl, val, clr) in zip(kc, [
-            ("현재가",  f"${price:.2f}",     "#1A1D23"),
-            ("주가 Z",  f"{zs:+.2f}σ",       zcolor(zs)),
-            ("거시 Z",  f"{weighted_z:+.2f}", zcolor(weighted_z)),
-            ("수익률",  f"{'+'if pnl>=0 else ''}{pnl:.1f}%", pc),
-        ]):
-            col.markdown(
-                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;'
-                f'padding:10px;text-align:center;">'
-                f'<div style="font-size:10px;color:#9CA3AF;font-weight:500;letter-spacing:0.5px;'
-                f'text-transform:uppercase;margin-bottom:3px;">{lbl}</div>'
-                f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:16px;'
-                f'font-weight:700;color:{clr};">{val}</div></div>',
-                unsafe_allow_html=True
-            )
+            # 기간 버튼은 데이터 없어도 표시
+            p_cols2 = st.columns([1, 1, 1, 1, 8])
+            for idx, label in enumerate(["1일", "1주", "1달", "1년"]):
+                with p_cols2[idx]:
+                    if st.button(label, key=f"p2_{label}", use_container_width=True,
+                                 type="primary" if pk == label else "secondary"):
+                        st.session_state.chart_period = label
+                        st.rerun()
 
     # ── TAB 2: 섹터 지표 & 리스크 드라이버 ──────────────────────────
     with tab2:
@@ -736,105 +819,98 @@ def render_detail_page():
                     unsafe_allow_html=True
                 )
 
-    # ── TAB 4: 뉴스 — 연간 주요 + 최근 ─────────────────────────────
+    # ── TAB 4: 뉴스 ─────────────────────────────────────────────────
     with tab4:
-        news_l, news_r = st.columns([3, 1])
-        with news_l:
-            # ① 연간 주요 뉴스
+        with st.spinner("뉴스 수집 중..."):
+            ko_bonus, ko_news = get_korean_news(target, si.get("name", ""))
+
+        if ko_news:
+            pos_c  = sum(1 for n in ko_news if n["sentiment"] == "Positive")
+            neg_c  = sum(1 for n in ko_news if n["sentiment"] == "Negative")
+            neu_c  = sum(1 for n in ko_news if n["sentiment"] == "Neutral")
+            nb_clr = "#059669" if ko_bonus > 0 else "#DC2626" if ko_bonus < 0 else "#9CA3AF"
+
+            # 감성 요약 바
             st.markdown(
-                '<div style="font-size:12px;font-weight:700;color:#1A1D23;margin-bottom:8px;">'
-                '⭐ 연간 주요 뉴스 <span style="font-size:10px;font-weight:400;color:#9CA3AF;">임팩트 높은 순</span></div>',
+                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;'
+                f'padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">'
+                f'<span style="font-size:11px;color:#6B7280;">감성 분포 ({len(ko_news)}건)</span>'
+                f'<span style="color:#059669;font-size:12px;font-weight:600;">▲ 긍정 {pos_c}건</span>'
+                f'<span style="color:#DC2626;font-size:12px;font-weight:600;">▼ 부정 {neg_c}건</span>'
+                f'<span style="color:#9CA3AF;font-size:12px;">● 중립 {neu_c}건</span>'
+                f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;'
+                f'color:{nb_clr};font-weight:700;margin-left:auto;">'
+                f'뉴스 보정 {ko_bonus:+.1f}%</span></div>',
                 unsafe_allow_html=True
             )
-            with st.spinner("연간 뉴스 수집 중..."):
-                yearly = get_yearly_top_news(target, si.get("name",""))
 
-            if yearly:
-                for n in yearly:
-                    impact = n.get("impact", 0)
-                    stars  = "★" * min(impact, 3) if impact > 0 else ""
-                    if impact >= 2:
-                        css, tc = "news-star", "#F59E0B"
-                        icon = f"⭐ {stars}"
-                    elif n["sentiment"] == "Positive":
-                        css, tc, icon = "news-pos", "#059669", f"▲ {stars}"
-                    elif n["sentiment"] == "Negative":
-                        css, tc, icon = "news-neg", "#DC2626", f"▼ {stars}"
-                    else:
-                        css, tc, icon = "news-neu", "#9CA3AF", "●"
-                    st.markdown(
-                        f'<div class="{css}" style="margin-bottom:8px;">'
-                        f'<div style="display:flex;justify-content:space-between;margin-bottom:5px;">'
-                        f'<span style="font-size:10px;font-weight:700;color:{tc};">{icon}</span>'
-                        f'<span style="font-size:10px;color:#9CA3AF;">'
-                        f'{n.get("source","")}  {n.get("pub_date","")}</span></div>'
-                        f'<a href="{n["link"]}" target="_blank" '
-                        f'style="font-size:13px;font-weight:500;color:#1A1D23;text-decoration:none;line-height:1.5;">'
-                        f'{n["title"]}</a></div>',
-                        unsafe_allow_html=True
-                    )
-            else:
-                st.markdown('<div style="color:#9CA3AF;font-size:12px;padding:8px 0;">뉴스를 불러올 수 없습니다.</div>', unsafe_allow_html=True)
-
-            st.markdown("<br>", unsafe_allow_html=True)
-
-            # ② 최근 실시간 뉴스
+            # ── 섹션 1: 올해 가장 영향력 있는 뉴스 (감성 강도 상위) ──────
             st.markdown(
-                '<div style="font-size:12px;font-weight:700;color:#1A1D23;margin-bottom:8px;">'
-                '📅 최근 뉴스 <span style="font-size:10px;font-weight:400;color:#9CA3AF;">실시간</span></div>',
+                '<div class="section-hdr">🔥 올해 가장 영향력 있는 주요 뉴스</div>',
                 unsafe_allow_html=True
             )
-            with st.spinner("최근 뉴스 수집 중..."):
-                ko_bonus, recent = get_korean_news(target, si.get("name",""))
+            # 긍/부정 중 감성이 뚜렷한 것 우선, 중립은 뒤로
+            sorted_news = sorted(
+                ko_news,
+                key=lambda x: (0 if x["sentiment"] != "Neutral" else 1, x.get("pub_date", ""))
+            )
+            top_news = sorted_news[:3]  # 상위 3개
+            for n in top_news:
+                css  = "news-pos" if n["sentiment"]=="Positive" else "news-neg" if n["sentiment"]=="Negative" else "news-neu"
+                icon = "▲" if n["sentiment"]=="Positive" else "▼" if n["sentiment"]=="Negative" else "●"
+                tc   = "#059669" if n["sentiment"]=="Positive" else "#DC2626" if n["sentiment"]=="Negative" else "#9CA3AF"
+                pub  = f'<span style="color:#9CA3AF;font-size:10px;margin-left:8px;">{n.get("pub_date","")}</span>' if n.get("pub_date") else ""
+                src  = f'<span style="color:#9CA3AF;font-size:10px;">{n.get("source","")}</span>' if n.get("source") else ""
+                st.markdown(
+                    f'<div class="{css}" style="margin-bottom:10px;">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
+                    f'<span style="font-size:10px;color:{tc};font-weight:700;">{icon} 주요 뉴스</span>'
+                    f'<div>{src}{pub}</div></div>'
+                    f'<a href="{n["link"]}" target="_blank" '
+                    f'style="font-size:13px;color:#1A1D23;text-decoration:none;font-weight:600;line-height:1.5;">'
+                    f'{n["title"]}</a></div>',
+                    unsafe_allow_html=True
+                )
 
-            if recent:
-                for n in recent:
+            # ── 섹션 2: 최근 주요 뉴스 ────────────────────────────────────
+            st.markdown("<div style='height:8px;'></div>", unsafe_allow_html=True)
+            st.markdown(
+                '<div class="section-hdr">📋 최근 주요 뉴스</div>',
+                unsafe_allow_html=True
+            )
+            recent_news = sorted_news[3:]  # 나머지
+            if recent_news:
+                for n in recent_news:
                     css  = "news-pos" if n["sentiment"]=="Positive" else "news-neg" if n["sentiment"]=="Negative" else "news-neu"
                     icon = "▲" if n["sentiment"]=="Positive" else "▼" if n["sentiment"]=="Negative" else "●"
                     tc   = "#059669" if n["sentiment"]=="Positive" else "#DC2626" if n["sentiment"]=="Negative" else "#9CA3AF"
+                    pub  = f'<span style="color:#9CA3AF;font-size:10px;margin-left:8px;">{n.get("pub_date","")}</span>' if n.get("pub_date") else ""
+                    src  = f'<span style="color:#9CA3AF;font-size:10px;">{n.get("source","")}</span>' if n.get("source") else ""
                     st.markdown(
                         f'<div class="{css}" style="margin-bottom:8px;">'
-                        f'<div style="display:flex;justify-content:space-between;margin-bottom:5px;">'
-                        f'<span style="font-size:10px;font-weight:700;color:{tc};">{icon}</span>'
-                        f'<span style="font-size:10px;color:#9CA3AF;">'
-                        f'{n.get("source","")}  {n.get("pub_date","")}</span></div>'
+                        f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+                        f'<span style="font-size:10px;color:{tc};font-weight:600;">{icon} {n["sentiment"].upper()}</span>'
+                        f'<div>{src}{pub}</div></div>'
                         f'<a href="{n["link"]}" target="_blank" '
-                        f'style="font-size:13px;font-weight:500;color:#1A1D23;text-decoration:none;line-height:1.5;">'
+                        f'style="font-size:13px;color:#1A1D23;text-decoration:none;font-weight:500;line-height:1.5;">'
                         f'{n["title"]}</a></div>',
                         unsafe_allow_html=True
                     )
             else:
-                st.markdown('<div style="color:#9CA3AF;font-size:12px;padding:8px 0;">최근 뉴스를 불러올 수 없습니다.</div>', unsafe_allow_html=True)
-
-        with news_r:
-            all_news = (yearly or []) + (recent or [])
-            if all_news:
-                pos_c = sum(1 for n in all_news if n["sentiment"]=="Positive")
-                neg_c = sum(1 for n in all_news if n["sentiment"]=="Negative")
-                neu_c = sum(1 for n in all_news if n["sentiment"]=="Neutral")
-                nb_clr = "#059669" if ko_bonus>0 else "#DC2626" if ko_bonus<0 else "#9CA3AF"
-                sf = go.Figure(go.Pie(
-                    values=[max(pos_c,0.01),max(neg_c,0.01),max(neu_c,0.01)],
-                    labels=["긍정","부정","중립"], hole=0.62,
-                    marker=dict(colors=["#059669","#DC2626","#D1D5DB"],
-                                line=dict(color="#FFFFFF",width=2)),
-                    textfont=dict(family="Inter",size=10),
-                ))
-                sf.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)", showlegend=True,
-                    legend=dict(font=dict(color="#6B7280",size=11),bgcolor="rgba(0,0,0,0)"),
-                    margin=dict(t=0,b=0,l=0,r=0), height=160,
-                    annotations=[dict(text=f"<b>{ko_bonus:+.0f}%</b>",x=0.5,y=0.5,
-                        font=dict(size=16,color=nb_clr,family="JetBrains Mono"),showarrow=False)]
-                )
-                st.plotly_chart(sf, use_container_width=True)
                 st.markdown(
-                    f'<div style="background:#F9FAFB;border-radius:8px;padding:12px;text-align:center;">'
-                    f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:4px;">뉴스 승률 보정</div>'
-                    f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:20px;'
-                    f'font-weight:700;color:{nb_clr};">{ko_bonus:+.1f}%</div></div>',
+                    '<div style="font-size:12px;color:#9CA3AF;padding:8px;">추가 뉴스가 없습니다.</div>',
                     unsafe_allow_html=True
                 )
+        else:
+            st.markdown(
+                '<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;'
+                'padding:20px;text-align:center;">'
+                '<div style="font-size:20px;margin-bottom:8px;">📰</div>'
+                '<div style="font-size:13px;color:#D97706;font-weight:600;">뉴스를 불러올 수 없습니다</div>'
+                '<div style="font-size:12px;color:#9CA3AF;margin-top:4px;">'
+                '네트워크 연결을 확인하거나 잠시 후 다시 시도해주세요</div></div>',
+                unsafe_allow_html=True
+            )
 
     # ── TAB 5: 계산 근거 ─────────────────────────────────────────────
     with tab5:
