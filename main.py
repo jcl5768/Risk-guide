@@ -66,9 +66,9 @@ with st.sidebar:
                                  min_value=0.1, max_value=100.0, step=0.1, format="%.1f",   key=f"ew_{i}")
             ns = st.number_input("수량(주)",    value=float(stock.get("shares", 1)),
                                  min_value=0.001, max_value=float(1000000),
-                                 step=0.001, format="%.3f",                                  key=f"es_{i}")
+                                 step=1.0, format="%g",                                      key=f"es_{i}")
             na = st.number_input("평균단가($)", value=float(stock["avg_price"]),
-                                 min_value=0.0001, max_value=999999.0, format="%.4f",        key=f"ea_{i}")
+                                 min_value=0.01, max_value=999999.0, step=1.0, format="%g",  key=f"ea_{i}")
             c1, c2 = st.columns(2)
             with c1:
                 if st.button("✅ 저장", key=f"save_{i}", use_container_width=True):
@@ -207,14 +207,14 @@ with st.sidebar:
         ns = st.number_input(
             "수량(주)",
             min_value=0.001, max_value=float(1000000),
-            value=1.0, step=0.001, format="%.3f",   # ← 소수점 허용
+            value=1.0, step=1.0, format="%g",
             key="add_s"
         )
         na = st.number_input(
             "평균단가($)",
-            min_value=0.0001, max_value=999999.0,
-            value=max(0.0001, round(float(auto_price), 4)) if auto_price else 1.0,
-            format="%.4f",
+            min_value=0.01, max_value=999999.0,
+            value=max(1.0, round(float(auto_price), 2)) if auto_price else 1.0,
+            step=1.0, format="%g",
             key="add_a",
             help="현재가로 자동 입력됩니다. 직접 수정 가능"
         )
