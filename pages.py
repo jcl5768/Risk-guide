@@ -224,19 +224,27 @@ def render_main_page():
 
     # 거시 지표
     st.markdown('<div class="section-hdr">📡 주요 거시 지표</div>', unsafe_allow_html=True)
-    mc = st.columns(5)
-    for col, (label, sym, desc) in zip(mc, MACRO_INDICATORS):
+    cards_html = ""
+    for (label, sym, desc) in MACRO_INDICATORS:
         z, price = get_z_and_price(sym)
         arrow = "▲" if z > 0.2 else "▼" if z < -0.2 else "—"
         ac    = "#059669" if z > 0.2 else "#DC2626" if z < -0.2 else "#6B7280"
-        col.markdown(
-            f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;padding:8px 12px;">'
-            f'<div style="font-size:9px;font-weight:600;color:#9CA3AF;margin-bottom:2px;letter-spacing:0.3px;">{label}</div>'
-            f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:14px;font-weight:700;color:{zcolor(z)};line-height:1.2;">'
+        cards_html += (
+            f'<div style="flex:0 0 30%;min-width:100px;max-width:130px;'
+            f'background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;padding:8px 12px;">'
+            f'<div style="font-size:9px;font-weight:600;color:#9CA3AF;margin-bottom:2px;'
+            f'letter-spacing:0.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{label}</div>'
+            f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:14px;font-weight:700;'
+            f'color:{zcolor(z)};line-height:1.2;">'
             f'{price:,.2f} <span style="font-size:11px;color:{ac};">{arrow}</span></div>'
-            f'<div style="font-size:9px;color:#B0B7C3;margin-top:2px;">Z {z:+.2f}σ</div></div>',
-            unsafe_allow_html=True
+            f'<div style="font-size:9px;color:#B0B7C3;margin-top:2px;">Z {z:+.2f}σ</div></div>'
         )
+    st.markdown(
+        f'<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;'
+        f'-webkit-overflow-scrolling:touch;scrollbar-width:none;">'
+        f'{cards_html}</div>',
+        unsafe_allow_html=True
+    )
 
     st.markdown("<br>", unsafe_allow_html=True)
     portfolio = st.session_state.portfolio
@@ -364,6 +372,9 @@ def render_detail_page():
     if st.sidebar.button("← 대시보드로", use_container_width=True):
         st.session_state.page = "main"; st.rerun()
 
+    if st.button("← 홈으로 돌아가기", key="btn_home_top"):
+        st.session_state.page = "main"; st.rerun()
+
     si = next(
         (s for s in st.session_state.portfolio if s["ticker"] == target),
         {"name": target, "weight": "—", "avg_price": 0, "shares": 0}
@@ -472,7 +483,7 @@ def render_detail_page():
             r, g, b = int(sv_[1:3], 16), int(sv_[3:5], 16), int(sv_[5:7], 16)
 
             # 기간별 표시 행 수 제한 (1일≈1달, 1주≈3달)
-            MAX_ROWS = {"1일": 120, "1주": 60, "1달": 22, "1년": 52}
+            MAX_ROWS = {"1일": 120, "1주": 65, "1달": 22, "1년": 52}
             df = df.tail(MAX_ROWS.get(pk, len(df))).reset_index(drop=True)
 
             if pk in ("1달", "1년") and all(c in df.columns for c in ["Open", "High", "Low", "Close"]):
@@ -589,7 +600,7 @@ def render_detail_page():
                 )
                 st.plotly_chart(vol_fig, use_container_width=True)
 
-            # ── 기간 선택 버튼 — 4개 균등, 전체 너비 ──────────────────
+            # ── 기간 선택 버튼 — 4개 균등, 한 줄 전체 너비 ──────────
             period_cols = st.columns(4)
             for idx, label in enumerate(["1일", "1주", "1달", "1년"]):
                 with period_cols[idx]:
@@ -638,7 +649,9 @@ def render_detail_page():
             f'<div style="font-size:11px;color:#6B7280;margin-top:4px;">📌 {cfg["cycle_note"]}</div>'
             f'<div style="font-size:11px;color:#6B7280;margin-top:4px;">'
             f'거시환경 가중 Z-Score: <b style="color:{zcolor(weighted_z)};">{weighted_z:+.3f}σ</b>'
-            f' → 승률 기여 <b style="color:{zcolor(weighted_z)};">{macro_contrib}%p</b></div></div>',
+            f' → 승률 기여 <b style="color:{zcolor(weighted_z)};">{macro_contrib}%p</b>'
+            f'<span style="color:#9CA3AF;"> · Z값은 최근 가격이 평균 대비 얼마나 벗어났는지를 나타냄 (0=평균, ±1=보통, ±2=극단)</span>'
+            f'</div></div>',
             unsafe_allow_html=True
         )
 
@@ -653,6 +666,14 @@ def render_detail_page():
             bs      = 50.0 if eff_z >= 0 else max(0.0, 50.0 - min(50.0, abs(eff_z) / 3 * 50))
             bw      = min(50.0, abs(eff_z) / 3 * 50)
 
+            # 직관적 상태 표현
+            if eff_z > 1.5:   state = "📈 강하게 밀어올리는 중"
+            elif eff_z > 0.3: state = "↗ 약하게 유리한 방향"
+            elif eff_z > -0.3:state = "→ 거의 중립"
+            elif eff_z > -1.5:state = "↘ 약하게 불리한 방향"
+            else:             state = "📉 강하게 눌리는 중"
+            state_clr = "#059669" if eff_z > 0.3 else "#DC2626" if eff_z < -0.3 else "#6B7280"
+
             st.markdown(f"""
 <div class="ind-card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
@@ -662,10 +683,11 @@ def render_detail_page():
             <span class="sensitivity-{sens}" style="margin-left:6px;">{SENSITIVITY_LABEL.get(sens,'')}</span>
             <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">{ind['desc']}</div>
         </div>
-        <div style="text-align:right;min-width:80px;">
+        <div style="text-align:right;min-width:90px;">
             <div style="font-family:'JetBrains Mono',monospace;font-size:15px;
                         font-weight:700;color:{zcolor(ind['z'])};">{ind['z']:+.2f}σ</div>
             <div style="font-size:10px;color:{zcolor(ind['z'])};">{zdesc(ind['z'])}</div>
+            <div style="font-size:10px;color:{state_clr};margin-top:2px;font-weight:600;">{state}</div>
         </div>
     </div>
     <div style="height:5px;background:#F3F4F6;border-radius:3px;position:relative;margin-bottom:5px;">
