@@ -1,3 +1,5 @@
+st.error("신규 코드 반영 테스트 중!") 
+
 # main.py
 import streamlit as st
 from config import SECTOR_CONFIG, ETF_MAP
