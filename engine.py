@@ -254,53 +254,40 @@ def corr_color(corr,direction):
     if abs(corr)<0.15: return "#9CA3AF"
     return "#059669" if aligned else "#DC2626"
 
-# ── 연간 주요 뉴스 (1년치 Google RSS, 감성 점수 높은 순 정렬) ─────────────────
-@st.cache_data(ttl=3600)  # 1시간 캐시 (연간 뉴스는 자주 안 바뀜)
+@st.cache_data(ttl=3600)
 def get_yearly_top_news(ticker, stock_name=""):
-    """
-    1년 치 구글 뉴스에서 감성 점수가 강한 뉴스 최대 5개 반환.
-    검색어: "{ticker} 연간 실적 전망 2024 2025"
-    """
-    pos_kw=["상승","급등","호재","매수","추천","목표가 상향","실적 개선","흑자","성장","수혜",
-            "돌파","신고가","강세","긍정","반등","증가","확대","수주","계약","출시","승인",
-            "사상 최고","최대 실적","어닝 서프라이즈","buy","upgrade","beat","record","profit"]
-    neg_kw=["하락","급락","악재","매도","목표가 하향","실적 부진","적자","우려","리스크","위기",
-            "하회","약세","부정","손실","감소","축소","취소","리콜","소송","조사","파산","제재",
-            "sell","downgrade","miss","weak","fraud","recall","crisis","cut"]
-
-    queries = []
-    if stock_name and stock_name != ticker:
-        queries.append(f"{stock_name} 실적 2025")
-    queries.append(f"{ticker} 연간 전망 실적")
-
-    all_news = []; seen = set()
+    """1년치 Google RSS에서 임팩트 높은 뉴스 상위 5개"""
+    pos_kw=["상승","급등","호재","매수","목표가 상향","실적 개선","흑자","성장","신고가","반등",
+            "증가","확대","수주","계약","승인","사상 최고","최대 실적","buy","upgrade","beat","record"]
+    neg_kw=["하락","급락","악재","매도","목표가 하향","실적 부진","적자","우려","위기",
+            "손실","감소","취소","리콜","소송","파산","sell","downgrade","miss","fraud","crisis"]
+    queries=[]
+    if stock_name and stock_name!=ticker: queries.append(f"{stock_name} 실적 전망")
+    queries.append(f"{ticker} 주가 실적")
+    all_news=[]; seen=set()
     for query in queries:
-        if len(all_news) >= 10: break
+        if len(all_news)>=10: break
         try:
-            url = f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko&tbs=qdr:y"
-            req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=5) as resp:
-                xml_data = resp.read()
-            root = ET.fromstring(xml_data)
+            url=f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko"
+            req=urllib.request.Request(url,headers={"User-Agent":"Mozilla/5.0"})
+            with urllib.request.urlopen(req,timeout=5) as resp: xml_data=resp.read()
+            root=ET.fromstring(xml_data)
             for item in root.findall(".//item")[:8]:
                 te=item.find("title"); le=item.find("link")
                 pe=item.find("pubDate"); se=item.find("source")
-                title = te.text.strip() if te is not None else ""
-                link  = le.text.strip() if le is not None else "#"
-                pub   = pe.text.strip()[:16] if pe is not None else ""
-                src   = se.text.strip() if se is not None else "Google News"
+                title=te.text.strip() if te is not None else ""
+                link=le.text.strip() if le is not None else "#"
+                pub=pe.text.strip()[:16] if pe is not None else ""
+                src=se.text.strip() if se is not None else "Google News"
                 if not title or title in seen: continue
                 seen.add(title)
-                pos_score = sum(1 for kw in pos_kw if kw in title)
-                neg_score = sum(1 for kw in neg_kw if kw in title)
-                if pos_score > neg_score: sentiment = "Positive"
-                elif neg_score > pos_score: sentiment = "Negative"
-                else: sentiment = "Neutral"
-                impact = abs(pos_score - neg_score) + max(pos_score, neg_score)
-                all_news.append({"title":title,"link":link,"source":src,
-                                 "pub_date":pub,"sentiment":sentiment,"impact":impact})
+                ps=sum(1 for kw in pos_kw if kw in title)
+                ns=sum(1 for kw in neg_kw if kw in title)
+                if ps>ns: sentiment="Positive"
+                elif ns>ps: sentiment="Negative"
+                else: sentiment="Neutral"
+                impact=abs(ps-ns)+max(ps,ns)
+                all_news.append({"title":title,"link":link,"source":src,"pub_date":pub,"sentiment":sentiment,"impact":impact})
         except: continue
-
-    # 임팩트 점수 높은 순 정렬, 상위 5개
-    all_news.sort(key=lambda x: x["impact"], reverse=True)
+    all_news.sort(key=lambda x: x["impact"],reverse=True)
     return all_news[:5]
