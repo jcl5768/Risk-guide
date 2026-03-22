@@ -62,18 +62,18 @@ with st.sidebar:
         if st.session_state.editing == i:
             # 수정 모드
             st.markdown(f"**✏️ {stock['ticker']} 수정**")
-            nn = st.text_input("종목명",       value=stock["name"],                          key=f"en_{i}")
             nw = st.number_input("비중(%)",     value=float(stock["weight"]),
                                  min_value=0.1, max_value=100.0, step=0.1, format="%.1f",   key=f"ew_{i}")
-            ns = st.number_input("수량(주)",    value=int(stock.get("shares", 1)),
-                                 min_value=1,   max_value=1000000,                           key=f"es_{i}")
+            ns = st.number_input("수량(주)",    value=float(stock.get("shares", 1)),
+                                 min_value=0.001, max_value=float(1000000),
+                                 step=0.001, format="%.3f",                                  key=f"es_{i}")
             na = st.number_input("평균단가($)", value=float(stock["avg_price"]),
-                                 min_value=1.0, max_value=999999.0, format="%.2f",           key=f"ea_{i}")
+                                 min_value=0.0001, max_value=999999.0, format="%.4f",        key=f"ea_{i}")
             c1, c2 = st.columns(2)
             with c1:
                 if st.button("✅ 저장", key=f"save_{i}", use_container_width=True):
                     st.session_state.portfolio[i].update(
-                        {"name": nn, "weight": round(nw, 1), "shares": ns, "avg_price": na}
+                        {"weight": round(nw, 1), "shares": round(ns, 3), "avg_price": na}
                     )
                     st.session_state.editing = None
                     st.rerun()
@@ -197,30 +197,24 @@ with st.sidebar:
 
         st.markdown("---")
 
-        # 입력 폼
-        nn = st.text_input(
-            "종목명",
-            value=auto_name,
-            placeholder="자동 입력",
-            key="add_n"
-        )
+        # 입력 폼 (종목명 텍스트박스 제거 — 자동 처리)
         nw = st.number_input(
             "비중(%)",
             min_value=0.1, max_value=100.0,
-            value=10.0, step=0.1, format="%.1f",   # ← 소수점 허용
+            value=10.0, step=0.1, format="%.1f",
             key="add_w"
         )
         ns = st.number_input(
             "수량(주)",
-            min_value=1, max_value=1000000,
-            value=1,
+            min_value=0.001, max_value=float(1000000),
+            value=1.0, step=0.001, format="%.3f",   # ← 소수점 허용
             key="add_s"
         )
         na = st.number_input(
             "평균단가($)",
-            min_value=1.0, max_value=999999.0,      # ← min=1.0
-            value=max(1.0, round(float(auto_price), 2)) if auto_price else 1.0,
-            format="%.2f",
+            min_value=0.0001, max_value=999999.0,
+            value=max(0.0001, round(float(auto_price), 4)) if auto_price else 1.0,
+            format="%.4f",
             key="add_a",
             help="현재가로 자동 입력됩니다. 직접 수정 가능"
         )
@@ -231,9 +225,9 @@ with st.sidebar:
                 if final_ticker:
                     st.session_state.portfolio.append({
                         "ticker":    final_ticker,
-                        "name":      nn or final_ticker,
+                        "name":      auto_name or final_ticker,
                         "weight":    round(nw, 1),
-                        "shares":    ns,
+                        "shares":    round(ns, 3),
                         "avg_price": na,
                     })
                     st.session_state.show_add = False
