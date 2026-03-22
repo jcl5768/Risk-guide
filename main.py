@@ -66,9 +66,9 @@ with st.sidebar:
                                  min_value=0.1, max_value=100.0, step=0.1, format="%.1f",   key=f"ew_{i}")
             ns = st.number_input("수량(주)",    value=float(stock.get("shares", 1)),
                                  min_value=0.001, max_value=float(1000000),
-                                 step=1.0, format="%g",                                      key=f"es_{i}")
+                                 step=0.001, format="%.3f",                                  key=f"es_{i}")
             na = st.number_input("평균단가($)", value=float(stock["avg_price"]),
-                                 min_value=0.01, max_value=999999.0, step=1.0, format="%g",  key=f"ea_{i}")
+                                 min_value=0.0001, max_value=999999.0, format="%.4f",        key=f"ea_{i}")
             c1, c2 = st.columns(2)
             with c1:
                 if st.button("✅ 저장", key=f"save_{i}", use_container_width=True):
@@ -125,20 +125,17 @@ with st.sidebar:
     # ── 통합 종목 검색 & 추가 ────────────────────────────────────────────
     if st.button("➕  종목 추가", use_container_width=True, key="toggle_add"):
         st.session_state.show_add = not st.session_state.show_add
+        if st.session_state.show_add:
+            # 검색창 포커스를 위해 키 초기화
+            for k in ("search_q", "sg_select"):
+                st.session_state.pop(k, None)
 
     if st.session_state.show_add:
-        st.markdown(
-            '<div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">'
-            '🔍 종목 검색</div>',
-            unsafe_allow_html=True
-        )
-
-        # ── 통합 검색창: 티커 + 종목명 동시 검색 ────────────────────────
+        # 검색창 바로 표시 (라벨 없이 깔끔하게)
         query = st.text_input(
-            "티커 또는 종목명",
-            placeholder="예: AAPL, Apple, 반도체, 나스닥…",
+            "🔍 티커 또는 종목명 검색",
+            placeholder="예: AAPL, Apple, 반도체…",
             key="search_q",
-            label_visibility="collapsed"
         ).strip()
 
         # 연관 검색 결과 → selectbox로 통합
@@ -207,14 +204,14 @@ with st.sidebar:
         ns = st.number_input(
             "수량(주)",
             min_value=0.001, max_value=float(1000000),
-            value=1.0, step=1.0, format="%g",
+            value=1.0, step=0.001, format="%.3f",   # ← 소수점 허용
             key="add_s"
         )
         na = st.number_input(
             "평균단가($)",
-            min_value=0.01, max_value=999999.0,
-            value=max(1.0, round(float(auto_price), 2)) if auto_price else 1.0,
-            step=1.0, format="%g",
+            min_value=0.0001, max_value=999999.0,
+            value=max(0.0001, round(float(auto_price), 4)) if auto_price else 1.0,
+            format="%.4f",
             key="add_a",
             help="현재가로 자동 입력됩니다. 직접 수정 가능"
         )
