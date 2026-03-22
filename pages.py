@@ -6,7 +6,7 @@ from engine import (
     detect_sector, get_z_and_price, get_sector_analysis,
     get_price_history, get_news, get_korean_news,
     get_macro_correlation, get_chart_data, get_price_stats,
-    calc_win_rate, get_weighted_z, run_backtest,
+    calc_win_rate, get_weighted_z,
     get_signal, zcolor, zdesc, corr_color,
 )
 
@@ -222,21 +222,33 @@ def render_main_page():
         unsafe_allow_html=True
     )
 
-    # 거시 지표
+    # 거시 지표 — 가로 슬라이드
     st.markdown('<div class="section-hdr">📡 주요 거시 지표</div>', unsafe_allow_html=True)
-    mc = st.columns(5)
-    for col, (label, sym, desc) in zip(mc, MACRO_INDICATORS):
+    cards_html = ""
+    for (label, sym, desc) in MACRO_INDICATORS:
         z, price = get_z_and_price(sym)
         arrow = "▲" if z > 0.2 else "▼" if z < -0.2 else "—"
         ac    = "#059669" if z > 0.2 else "#DC2626" if z < -0.2 else "#6B7280"
-        col.markdown(
-            f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;padding:8px 12px;">'
-            f'<div style="font-size:9px;font-weight:600;color:#9CA3AF;margin-bottom:2px;letter-spacing:0.3px;">{label}</div>'
-            f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:14px;font-weight:700;color:{zcolor(z)};line-height:1.2;">'
-            f'{price:,.2f} <span style="font-size:11px;color:{ac};">{arrow}</span></div>'
-            f'<div style="font-size:9px;color:#B0B7C3;margin-top:2px;">Z {z:+.2f}σ</div></div>',
-            unsafe_allow_html=True
+        zc    = zcolor(z)
+        z_plain = zdesc(z)   # 직관적 설명
+        cards_html += (
+            f'<div style="flex:0 0 28%;min-width:100px;max-width:130px;'
+            f'background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;'
+            f'padding:8px 10px;border-top:2px solid {zc};">'
+            f'<div style="font-size:9px;font-weight:600;color:#9CA3AF;margin-bottom:3px;'
+            f'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{label}</div>'
+            f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:13px;'
+            f'font-weight:700;color:{zc};line-height:1.2;">'
+            f'{price:,.2f} <span style="font-size:10px;color:{ac};">{arrow}</span></div>'
+            f'<div style="font-size:9px;color:{zc};margin-top:2px;font-weight:500;">{z_plain}</div>'
+            f'</div>'
         )
+    st.markdown(
+        f'<div style="display:flex;gap:8px;overflow-x:auto;padding:2px 2px 8px 2px;'
+        f'-webkit-overflow-scrolling:touch;scrollbar-width:none;'
+        f'msOverflowStyle:none;">{cards_html}</div>',
+        unsafe_allow_html=True
+    )
 
     st.markdown("<br>", unsafe_allow_html=True)
     portfolio = st.session_state.portfolio
@@ -244,11 +256,14 @@ def render_main_page():
     if not portfolio:
         st.markdown(
             '<div style="background:#FFFFFF;border:2px dashed #D1D5DB;border-radius:12px;'
-            'padding:48px;text-align:center;">'
-            '<div style="font-size:36px;margin-bottom:10px;">📭</div>'
-            '<div style="font-size:16px;font-weight:600;color:#374151;margin-bottom:6px;">아직 종목이 없습니다</div>'
-            '<div style="font-size:13px;color:#9CA3AF;">왼쪽 사이드바에서 <b>➕ 종목 추가</b>를 눌러주세요.</div>'
-            '<div style="font-size:11px;color:#D1D5DB;margin-top:8px;">예시: AAPL · TSLA · NVDA · XOM · JPM</div>'
+            'padding:40px 24px;text-align:center;margin-top:8px;">'
+            '<div style="font-size:32px;margin-bottom:10px;">📭</div>'
+            '<div style="font-size:15px;font-weight:600;color:#374151;margin-bottom:8px;">아직 종목이 없어요</div>'
+            '<div style="font-size:12px;color:#9CA3AF;line-height:1.8;">'
+            '왼쪽 사이드바의<br>'
+            '<b style="color:#1A1D23;">➕ 종목 추가</b> 버튼을 누르면<br>'
+            '검색창이 바로 열려요</div>'
+            '<div style="font-size:11px;color:#D1D5DB;margin-top:10px;">예: AAPL · TSLA · NVDA · SPY</div>'
             '</div>',
             unsafe_allow_html=True
         )
@@ -268,8 +283,8 @@ def render_main_page():
                 with st.spinner(""):
                     zs, price      = get_z_and_price(stock["ticker"])
                     _, cfg, inds   = get_sector_analysis(stock["ticker"])
-                    nb, news_items = get_news(stock["ticker"])
-                    win, breakdown = calc_win_rate(zs, inds, nb, stock_ticker=stock["ticker"], news_items=news_items)
+                    nb, _          = get_news(stock["ticker"])
+                    win, breakdown = calc_win_rate(zs, inds, nb)
 
                 st_, sc_, sv_ = get_signal(win)
                 pnl = ((price - stock["avg_price"]) / stock["avg_price"] * 100) \
@@ -361,6 +376,10 @@ def render_detail_page():
     if st.sidebar.button("← 대시보드로", use_container_width=True):
         st.session_state.page = "main"; st.rerun()
 
+    # 메인 영역 상단 홈 버튼
+    if st.button("← 홈으로", key="home_top"):
+        st.session_state.page = "main"; st.rerun()
+
     si = next(
         (s for s in st.session_state.portfolio if s["ticker"] == target),
         {"name": target, "weight": "—", "avg_price": 0, "shares": 0}
@@ -369,9 +388,9 @@ def render_detail_page():
     with st.spinner(f"{target} 분석 중..."):
         zs, price        = get_z_and_price(target)
         sk, cfg, inds    = get_sector_analysis(target)
-        nb, news_items   = get_news(target)
-        fw, breakdown    = calc_win_rate(zs, inds, nb, stock_ticker=target, news_items=news_items)
-        weighted_z       = get_weighted_z(inds, breakdown.get("dynamic_weights"))
+        nb, _            = get_news(target)
+        fw, breakdown    = calc_win_rate(zs, inds, nb)
+        weighted_z       = get_weighted_z(inds)
 
     st_, sc_, sv_ = get_signal(fw)
     pnl = ((price - si["avg_price"]) / si["avg_price"] * 100) \
@@ -428,10 +447,10 @@ def render_detail_page():
     # ── 탭 ───────────────────────────────────────────────────────────
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📈 차트",
-        f"{cfg['icon']} 섹터 & 리스크",
+        f"{cfg['icon']} 섹터 지표 & 리스크",
         "🔗 상관 분석",
-        "📰 뉴스",
-        "🧪 백테스트",
+        "📰 뉴스 (한국어)",
+        "🧮 계산 근거",
     ])
 
     # ── TAB 1: 차트 ────────────────────────────────────────────────── ─
@@ -464,142 +483,135 @@ def render_detail_page():
                 unsafe_allow_html=True
             )
 
-        # 메인 차트 — 개선된 디자인
+        # 메인 차트 — 축소 + 기간별 표시 범위 제한
         if not df.empty and "Close" in df.columns:
             r, g, b = int(sv_[1:3], 16), int(sv_[3:5], 16), int(sv_[5:7], 16)
 
-            if pk in ("1달", "1년") and all(c in df.columns for c in ["Open", "High", "Low", "Close"]):
+            # 기간별 표시 행 수 제한 (너무 많으면 잘라서 최근 데이터만)
+            MAX_ROWS = {"1일": 120, "1주": 60, "1달": 22, "1년": 52}
+            max_r = MAX_ROWS.get(pk, len(df))
+            df_plot = df.tail(max_r).reset_index(drop=True)
+
+            if pk in ("1달", "1년") and all(c in df_plot.columns for c in ["Open","High","Low","Close"]):
                 chart_fig = go.Figure()
-                # 캔들스틱 — 더 세련된 색상
                 chart_fig.add_trace(go.Candlestick(
-                    x=df["Date"], open=df["Open"], high=df["High"],
-                    low=df["Low"], close=df["Close"],
+                    x=df_plot["Date"], open=df_plot["Open"], high=df_plot["High"],
+                    low=df_plot["Low"], close=df_plot["Close"],
                     increasing_line_color="#10B981", decreasing_line_color="#EF4444",
-                    increasing_fillcolor="rgba(16,185,129,0.85)",
-                    decreasing_fillcolor="rgba(239,68,68,0.85)",
+                    increasing_fillcolor="rgba(16,185,129,0.8)",
+                    decreasing_fillcolor="rgba(239,68,68,0.8)",
                     name=target,
-                    hovertext=df.apply(
+                    hovertext=df_plot.apply(
                         lambda row: f"O ${row['Open']:.2f}  H ${row['High']:.2f}<br>"
                                     f"L ${row['Low']:.2f}  C ${row['Close']:.2f}", axis=1
                     ),
                     hoverinfo="x+text",
                 ))
-                if len(df) >= 20:
-                    ma20 = df["Close"].rolling(20).mean()
+                if len(df_plot) >= 20:
+                    ma20 = df_plot["Close"].rolling(20).mean()
                     chart_fig.add_trace(go.Scatter(
-                        x=df["Date"], y=ma20, mode="lines",
-                        line=dict(color="#F59E0B", width=1.5, dash="dash"), name="MA20"
+                        x=df_plot["Date"], y=ma20, mode="lines",
+                        line=dict(color="#F59E0B", width=1.2, dash="dash"), name="MA20"
                     ))
-                if len(df) >= 60:
-                    ma60 = df["Close"].rolling(60).mean()
+                if len(df_plot) >= 40:
+                    ma40 = df_plot["Close"].rolling(40).mean()
                     chart_fig.add_trace(go.Scatter(
-                        x=df["Date"], y=ma60, mode="lines",
-                        line=dict(color="#8B5CF6", width=1.2, dash="dot"), name="MA60"
+                        x=df_plot["Date"], y=ma40, mode="lines",
+                        line=dict(color="#8B5CF6", width=1.0, dash="dot"), name="MA40"
                     ))
             else:
                 chart_fig = go.Figure()
-                # 라인 차트 — 그라디언트 영역 강화
                 chart_fig.add_trace(go.Scatter(
-                    x=df["Date"], y=df["Close"], mode="lines",
-                    line=dict(color=sv_, width=2.5, shape="spline", smoothing=0.4),
+                    x=df_plot["Date"], y=df_plot["Close"], mode="lines",
+                    line=dict(color=sv_, width=2, shape="spline", smoothing=0.3),
                     fill="tozeroy",
-                    fillcolor=f"rgba({r},{g},{b},0.10)",
+                    fillcolor=f"rgba({r},{g},{b},0.08)",
                     name=target,
                     hovertemplate="<b>$%{y:.2f}</b>  %{x}<extra></extra>",
                 ))
-                # 최고가·최저가 마커
-                if len(df) > 2:
-                    idx_max = df["Close"].idxmax()
-                    idx_min = df["Close"].idxmin()
+                if len(df_plot) > 2:
+                    idx_max = df_plot["Close"].idxmax()
+                    idx_min = df_plot["Close"].idxmin()
                     chart_fig.add_trace(go.Scatter(
-                        x=[df.loc[idx_max, "Date"]], y=[df.loc[idx_max, "Close"]],
+                        x=[df_plot.loc[idx_max,"Date"]], y=[df_plot.loc[idx_max,"Close"]],
                         mode="markers+text",
-                        marker=dict(color="#10B981", size=8, symbol="circle"),
-                        text=[f"H ${df.loc[idx_max,'Close']:.2f}"],
+                        marker=dict(color="#10B981", size=6, symbol="circle"),
+                        text=[f"H ${df_plot.loc[idx_max,'Close']:.2f}"],
                         textposition="top center",
-                        textfont=dict(size=9, color="#10B981"),
+                        textfont=dict(size=8, color="#10B981"),
                         showlegend=False, hoverinfo="skip"
                     ))
                     chart_fig.add_trace(go.Scatter(
-                        x=[df.loc[idx_min, "Date"]], y=[df.loc[idx_min, "Close"]],
+                        x=[df_plot.loc[idx_min,"Date"]], y=[df_plot.loc[idx_min,"Close"]],
                         mode="markers+text",
-                        marker=dict(color="#EF4444", size=8, symbol="circle"),
-                        text=[f"L ${df.loc[idx_min,'Close']:.2f}"],
+                        marker=dict(color="#EF4444", size=6, symbol="circle"),
+                        text=[f"L ${df_plot.loc[idx_min,'Close']:.2f}"],
                         textposition="bottom center",
-                        textfont=dict(size=9, color="#EF4444"),
+                        textfont=dict(size=8, color="#EF4444"),
                         showlegend=False, hoverinfo="skip"
                     ))
 
             chart_fig.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(248,250,252,0.6)",
-                font=dict(color="#9CA3AF", size=11),
+                plot_bgcolor="rgba(248,250,252,0.5)",
+                font=dict(color="#9CA3AF", size=10),
                 xaxis=dict(
-                    showgrid=True, gridcolor="rgba(226,232,240,0.5)", gridwidth=0.5,
-                    color="#E8EAED",
+                    showgrid=True, gridcolor="rgba(226,232,240,0.4)", gridwidth=0.5,
                     rangeslider=dict(visible=False),
-                    tickfont=dict(size=10, color="#9CA3AF"),
+                    tickfont=dict(size=9, color="#9CA3AF"),
                     showline=True, linecolor="#E8EAED",
                 ),
                 yaxis=dict(
-                    showgrid=True, gridcolor="rgba(226,232,240,0.5)",
-                    gridwidth=0.5, color="#9CA3AF",
-                    tickfont=dict(size=10),
-                    showline=False,
+                    showgrid=True, gridcolor="rgba(226,232,240,0.4)",
+                    gridwidth=0.5,
+                    tickfont=dict(size=9),
                     tickprefix="$",
                     side="right",
                 ),
                 legend=dict(
                     bgcolor="rgba(255,255,255,0.8)",
                     bordercolor="#E8EAED", borderwidth=1,
-                    font=dict(size=10),
-                    orientation="h", y=1.03, x=0
+                    font=dict(size=9),
+                    orientation="h", y=1.02, x=0
                 ),
-                margin=dict(t=10, b=4, l=0, r=50),
-                height=360,
+                margin=dict(t=6, b=2, l=0, r=45),
+                height=240,   # 기존 360 → 240으로 축소
                 hovermode="x unified",
             )
             st.plotly_chart(chart_fig, use_container_width=True)
 
-            # 거래량 (여백 없이 바로 아래)
-            if "Volume" in df.columns and df["Volume"].sum() > 0:
+            # 거래량 (더 작게)
+            if "Volume" in df_plot.columns and df_plot["Volume"].sum() > 0:
                 vol_colors = [
-                    "#10B981" if i > 0 and df["Close"].iloc[i] >= df["Close"].iloc[i-1]
+                    "#10B981" if i > 0 and df_plot["Close"].iloc[i] >= df_plot["Close"].iloc[i-1]
                     else "#EF4444" if i > 0 else "#9CA3AF"
-                    for i in range(len(df))
+                    for i in range(len(df_plot))
                 ]
                 vol_fig = go.Figure(go.Bar(
-                    x=df["Date"], y=df["Volume"],
-                    marker_color=vol_colors, opacity=0.5,
-                    hovertemplate="%{x}<br>거래량: %{y:,.0f}<extra></extra>",
+                    x=df_plot["Date"], y=df_plot["Volume"],
+                    marker_color=vol_colors, opacity=0.45,
+                    hovertemplate="%{x}<br>%{y:,.0f}<extra></extra>",
                 ))
                 vol_fig.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,0.4)",
-                    xaxis=dict(showgrid=False, tickfont=dict(size=9, color="#9CA3AF")),
-                    yaxis=dict(showgrid=False, tickformat=".2s", tickfont=dict(size=9, color="#9CA3AF")),
-                    margin=dict(t=0, b=4, l=0, r=50),
-                    height=65, showlegend=False,
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,0.3)",
+                    xaxis=dict(showgrid=False, tickfont=dict(size=8, color="#9CA3AF")),
+                    yaxis=dict(showgrid=False, tickformat=".2s", tickfont=dict(size=8, color="#9CA3AF")),
+                    margin=dict(t=0, b=2, l=0, r=45),
+                    height=48, showlegend=False,
                 )
                 st.plotly_chart(vol_fig, use_container_width=True)
 
-            # ── 기간 선택 버튼 — 차트 아래, 작게 ──────────────────────
-            st.markdown(
-                '<div style="display:flex;justify-content:center;gap:6px;margin-top:4px;margin-bottom:2px;">',
-                unsafe_allow_html=True
-            )
-            period_cols = st.columns([3, 1, 1, 1, 1, 3])
+            # ── 기간 버튼 — 4개 균등, 모바일 전체 너비 ─────────────
+            p_cols = st.columns(4)
             for idx, label in enumerate(["1일", "1주", "1달", "1년"]):
-                with period_cols[idx + 1]:
-                    is_active = pk == label
+                with p_cols[idx]:
                     if st.button(
-                        label,
-                        key=f"p_{label}",
+                        label, key=f"p_{label}",
                         use_container_width=True,
-                        type="primary" if is_active else "secondary"
+                        type="primary" if pk == label else "secondary"
                     ):
                         st.session_state.chart_period = label
                         st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
 
         else:
             st.info("차트 데이터를 불러올 수 없습니다.")
@@ -627,55 +639,81 @@ def render_detail_page():
     with tab2:
         macro_sign    = "+" if weighted_z * 15 >= 0 else ""
         macro_contrib = f"{macro_sign}{weighted_z*15:.1f}"
+        macro_state   = "전반적으로 우호적" if weighted_z > 0.3 else "전반적으로 불리" if weighted_z < -0.3 else "중립적"
 
         st.markdown(
-            f'<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;'
-            f'padding:12px 16px;margin-bottom:16px;">'
-            f'<span class="lv2">Lv.2</span>'
-            f'<b style="font-size:13px;color:#1A1D23;margin-left:8px;">'
-            f'{cfg["icon"]} {cfg["label"]} — {len(inds)}개 드라이버</b>'
-            f'<div style="font-size:11px;color:#6B7280;margin-top:4px;">📌 {cfg["cycle_note"]}</div>'
-            f'<div style="font-size:11px;color:#6B7280;margin-top:4px;">'
-            f'거시환경 가중 Z-Score: <b style="color:{zcolor(weighted_z)};">{weighted_z:+.3f}σ</b>'
-            f' → 승률 기여 <b style="color:{zcolor(weighted_z)};">{macro_contrib}%p</b></div></div>',
+            f'<div style="background:#F9FAFB;border:1px solid #E8EAED;border-radius:8px;'
+            f'padding:12px 16px;margin-bottom:14px;">'
+            f'<div style="font-size:13px;font-weight:700;color:#1A1D23;margin-bottom:4px;">'
+            f'{cfg["icon"]} {cfg["label"]} 섹터 · {len(inds)}개 지표 분석</div>'
+            f'<div style="font-size:12px;color:#6B7280;margin-bottom:4px;">📌 {cfg["cycle_note"]}</div>'
+            f'<div style="font-size:12px;">'
+            f'지금 거시 환경은 이 종목에 '
+            f'<b style="color:{zcolor(weighted_z)};">{macro_state}</b>이에요. '
+            f'승률에 <b style="color:{zcolor(weighted_z)};">{macro_contrib}%p</b> 영향을 주고 있어요.'
+            f'</div></div>',
             unsafe_allow_html=True
         )
 
-        # 지표 카드
+        # 지표 카드 — 직관적 표현
         for ind in inds:
             eff_z   = ind["z"] * ind["direction"]
             contrib = eff_z * ind["driver_weight"] * 15
             cc2     = "#059669" if contrib > 0 else "#DC2626" if contrib < 0 else "#6B7280"
-            wlbl    = f"호재(×{ind['driver_weight']:.0%})" if ind["direction"] == +1 else f"악재(×{ind['driver_weight']:.0%})"
-            wclr    = "#059669" if ind["direction"] == +1 else "#DC2626"
             sens    = ind.get("sensitivity", "mid")
             bs      = 50.0 if eff_z >= 0 else max(0.0, 50.0 - min(50.0, abs(eff_z) / 3 * 50))
             bw      = min(50.0, abs(eff_z) / 3 * 50)
 
+            # 직관적 상태 문구
+            if eff_z > 1.0:
+                state_txt = "📈 강한 호재"
+                state_clr = "#059669"
+            elif eff_z > 0.3:
+                state_txt = "↗ 약한 호재"
+                state_clr = "#059669"
+            elif eff_z > -0.3:
+                state_txt = "→ 중립"
+                state_clr = "#6B7280"
+            elif eff_z > -1.0:
+                state_txt = "↘ 약한 악재"
+                state_clr = "#DC2626"
+            else:
+                state_txt = "📉 강한 악재"
+                state_clr = "#DC2626"
+
+            # 영향도 문구
+            abs_contrib = abs(contrib)
+            if abs_contrib >= 5:
+                impact_txt = "영향 매우 큼"
+            elif abs_contrib >= 2:
+                impact_txt = "영향 있음"
+            else:
+                impact_txt = "영향 적음"
+
             st.markdown(f"""
 <div class="ind-card">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
-        <div>
-            <span style="font-size:13px;font-weight:600;color:#1A1D23;">{ind['name']}</span>
-            <span style="font-size:10px;color:#9CA3AF;margin-left:5px;">({ind['ticker']})</span>
-            <span class="sensitivity-{sens}" style="margin-left:6px;">{SENSITIVITY_LABEL.get(sens,'')}</span>
-            <div style="font-size:11px;color:#9CA3AF;margin-top:2px;">{ind['desc']}</div>
-        </div>
-        <div style="text-align:right;min-width:80px;">
-            <div style="font-family:'JetBrains Mono',monospace;font-size:15px;
-                        font-weight:700;color:{zcolor(ind['z'])};">{ind['z']:+.2f}σ</div>
-            <div style="font-size:10px;color:{zcolor(ind['z'])};">{zdesc(ind['z'])}</div>
-        </div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;">
+    <div style="flex:1;min-width:0;">
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px;">
+        <span style="font-size:13px;font-weight:600;color:#1A1D23;">{ind['name']}</span>
+        <span class="sensitivity-{sens}">{SENSITIVITY_LABEL.get(sens,'')}</span>
+      </div>
+      <div style="font-size:11px;color:#6B7280;line-height:1.5;">{ind['desc']}</div>
     </div>
-    <div style="height:5px;background:#F3F4F6;border-radius:3px;position:relative;margin-bottom:5px;">
-        <div style="position:absolute;top:0;left:49.5%;width:1px;height:100%;background:#E8EAED;"></div>
-        <div style="position:absolute;top:0;left:{bs}%;width:{bw}%;height:100%;
-                    background:{zcolor(ind['z'])};border-radius:3px;opacity:0.8;"></div>
+    <div style="text-align:right;min-width:70px;margin-left:8px;">
+      <div style="font-size:13px;font-weight:700;color:{state_clr};">{state_txt}</div>
+      <div style="font-size:10px;color:#9CA3AF;margin-top:1px;">{impact_txt}</div>
     </div>
-    <div style="display:flex;justify-content:space-between;font-size:11px;">
-        <span style="color:{wclr};">{wlbl}</span>
-        <span style="color:{cc2};font-weight:600;">가중 기여 {'+'if contrib>0 else ''}{contrib:.1f}%p</span>
-    </div>
+  </div>
+  <div style="height:4px;background:#F3F4F6;border-radius:3px;position:relative;margin:6px 0 4px;">
+    <div style="position:absolute;top:0;left:49.5%;width:1px;height:100%;background:#D1D5DB;"></div>
+    <div style="position:absolute;top:0;left:{bs}%;width:{bw}%;height:100%;
+                background:{zcolor(ind['z'])};border-radius:3px;opacity:0.75;"></div>
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:10px;color:#9CA3AF;">
+    <span>{'호재 지표' if ind['direction']==+1 else '악재 지표'} · 가중치 {ind['driver_weight']:.0%}</span>
+    <span style="color:{cc2};font-weight:600;">승률에 {'+' if contrib>0 else ''}{contrib:.1f}%p 영향</span>
+  </div>
 </div>""", unsafe_allow_html=True)
 
         # 레이더 차트
@@ -799,235 +837,113 @@ def render_detail_page():
                     unsafe_allow_html=True
                 )
 
-    # ── TAB 4: 뉴스 ──────────────────────────────────────────────────
+    # ── TAB 4: 뉴스 (한국어) ─────────────────────────────────────────
     with tab4:
-        with st.spinner("뉴스 수집 중..."):
+        st.markdown(
+            f'<div style="background:#F8FAFF;border:1px solid #DBEAFE;border-radius:8px;'
+            f'padding:10px 14px;margin-bottom:14px;font-size:12px;color:#6B7280;">'
+            f'<b style="color:#1A1D23;">{target} ({si["name"]})</b>'
+            f' 관련 한국어 뉴스 · Google News 실시간 수집</div>',
+            unsafe_allow_html=True
+        )
+
+        with st.spinner("한국어 뉴스 수집 중..."):
             ko_bonus, ko_news = get_korean_news(target, si.get("name", ""))
 
         if ko_news:
-            pos_c  = sum(1 for n in ko_news if n["sentiment"] == "Positive")
-            neg_c  = sum(1 for n in ko_news if n["sentiment"] == "Negative")
-            neu_c  = sum(1 for n in ko_news if n["sentiment"] == "Neutral")
-            per_c  = sum(1 for n in ko_news if n.get("news_type","short") != "short")
+            pos_c = sum(1 for n in ko_news if n["sentiment"] == "Positive")
+            neg_c = sum(1 for n in ko_news if n["sentiment"] == "Negative")
+            neu_c = sum(1 for n in ko_news if n["sentiment"] == "Neutral")
             nb_clr = "#059669" if ko_bonus > 0 else "#DC2626" if ko_bonus < 0 else "#9CA3AF"
 
-            # 감성 요약 바
             st.markdown(
                 f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;'
-                f'padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">'
-                f'<span style="font-size:11px;color:#6B7280;">{len(ko_news)}건</span>'
-                f'<span style="color:#059669;font-size:12px;font-weight:600;">▲ {pos_c}</span>'
-                f'<span style="color:#DC2626;font-size:12px;font-weight:600;">▼ {neg_c}</span>'
-                f'<span style="color:#9CA3AF;font-size:12px;">● {neu_c}</span>'
-                f'<span style="background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;'
-                f'border-radius:4px;padding:1px 6px;font-size:10px;font-weight:600;">'
-                f'📌 지속 {per_c}</span>'
-                f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:11px;'
+                f'padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;">'
+                f'<span style="font-size:11px;color:#6B7280;">감성 분포 ({len(ko_news)}건)</span>'
+                f'<span style="color:#059669;font-size:12px;font-weight:600;">▲ 긍정 {pos_c}건</span>'
+                f'<span style="color:#DC2626;font-size:12px;font-weight:600;">▼ 부정 {neg_c}건</span>'
+                f'<span style="color:#9CA3AF;font-size:12px;">● 중립 {neu_c}건</span>'
+                f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;'
                 f'color:{nb_clr};font-weight:700;margin-left:auto;">'
-                f'보정 {ko_bonus:+.1f}%</span></div>',
+                f'뉴스 보정 {ko_bonus:+.1f}%</span></div>',
                 unsafe_allow_html=True
             )
 
-            # ── 지속성 뉴스 (시간 무관 60% 반영) ────────────────────
-            persistent = [n for n in ko_news if n.get("news_type","short") != "short"]
-            if persistent:
-                st.markdown(
-                    '<div style="font-size:12px;font-weight:700;color:#2563EB;'
-                    'margin-bottom:8px;padding-bottom:4px;border-bottom:2px solid #2563EB;">'
-                    '📌 지속성 뉴스 <span style="font-size:10px;font-weight:400;color:#6B7280;">'
-                    '— 시간 경과해도 주가에 계속 영향</span></div>',
-                    unsafe_allow_html=True
-                )
-                for n in persistent:
-                    nt   = n.get("news_type","short")
-                    css  = "news-pos" if n["sentiment"]=="Positive" else "news-neg" if n["sentiment"]=="Negative" else "news-neu"
-                    icon = "▲" if n["sentiment"]=="Positive" else "▼" if n["sentiment"]=="Negative" else "●"
-                    tc   = "#059669" if n["sentiment"]=="Positive" else "#DC2626" if n["sentiment"]=="Negative" else "#9CA3AF"
-                    pub  = f'<span style="color:#9CA3AF;font-size:10px;">{n.get("pub_date","")}</span>' if n.get("pub_date") else ""
-                    # 지속성 타입 배지
-                    badge = (
-                        '<span style="background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;'
-                        'border-radius:3px;padding:1px 5px;font-size:9px;font-weight:600;margin-left:4px;">지속반영 60%</span>'
-                    )
-                    st.markdown(
-                        f'<div class="{css}" style="margin-bottom:8px;border-left-width:3px;">'
-                        f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
-                        f'<span style="font-size:10px;color:{tc};font-weight:700;">{icon} {n["sentiment"].upper()}{badge}</span>'
-                        f'{pub}</div>'
-                        f'<a href="{n["link"]}" target="_blank" '
-                        f'style="font-size:13px;color:#1A1D23;text-decoration:none;font-weight:500;line-height:1.5;">'
-                        f'{n["title"]}</a></div>',
-                        unsafe_allow_html=True
-                    )
-
-            # ── 주요 뉴스 (긍/부정, 단기) ────────────────────────────
-            major = [n for n in ko_news
-                     if n["sentiment"] in ("Negative","Positive")
-                     and n.get("news_type","short") == "short"][:4]
-            if major:
-                st.markdown(
-                    '<div style="font-size:12px;font-weight:700;color:#1A1D23;'
-                    'margin:14px 0 8px;padding-bottom:4px;border-bottom:2px solid #1A1D23;">'
-                    '⚡ 주요 뉴스</div>', unsafe_allow_html=True
-                )
-                for n in major:
-                    css  = "news-pos" if n["sentiment"]=="Positive" else "news-neg"
-                    icon = "▲" if n["sentiment"]=="Positive" else "▼"
-                    tc   = "#059669" if n["sentiment"]=="Positive" else "#DC2626"
-                    pub  = f'<span style="color:#9CA3AF;font-size:10px;">{n.get("pub_date","")}</span>' if n.get("pub_date") else ""
-                    st.markdown(
-                        f'<div class="{css}" style="margin-bottom:8px;">'
-                        f'<div style="display:flex;justify-content:space-between;margin-bottom:4px;">'
-                        f'<span style="font-size:10px;color:{tc};font-weight:700;">{icon} {n["sentiment"].upper()}</span>'
-                        f'{pub}</div>'
-                        f'<a href="{n["link"]}" target="_blank" '
-                        f'style="font-size:13px;color:#1A1D23;text-decoration:none;font-weight:500;line-height:1.5;">'
-                        f'{n["title"]}</a></div>',
-                        unsafe_allow_html=True
-                    )
-
-            # ── 최근 뉴스 (전체) ─────────────────────────────────────
-            st.markdown(
-                '<div style="font-size:12px;font-weight:700;color:#1A1D23;'
-                'margin:14px 0 8px;padding-bottom:4px;border-bottom:2px solid #E8EAED;">'
-                '🕐 최근 뉴스</div>', unsafe_allow_html=True
-            )
             for n in ko_news:
                 css  = "news-pos" if n["sentiment"]=="Positive" else "news-neg" if n["sentiment"]=="Negative" else "news-neu"
                 icon = "▲" if n["sentiment"]=="Positive" else "▼" if n["sentiment"]=="Negative" else "●"
                 tc   = "#059669" if n["sentiment"]=="Positive" else "#DC2626" if n["sentiment"]=="Negative" else "#9CA3AF"
-                pub  = f'<span style="color:#9CA3AF;font-size:10px;">{n.get("pub_date","")}</span>' if n.get("pub_date") else ""
-                pin  = ('📌 ' if n.get("news_type","short") != "short" else "")
+                pub  = f'<span style="color:#9CA3AF;font-size:10px;margin-left:8px;">{n.get("pub_date","")}</span>' if n.get("pub_date") else ""
+                src  = f'<span style="color:#9CA3AF;font-size:10px;">{n.get("source","")}</span>' if n.get("source") else ""
                 st.markdown(
-                    f'<div class="{css}" style="margin-bottom:7px;">'
-                    f'<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'
+                    f'<div class="{css}">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
                     f'<span style="font-size:10px;color:{tc};font-weight:600;">{icon} {n["sentiment"].upper()}</span>'
-                    f'{pub}</div>'
+                    f'<div>{src}{pub}</div></div>'
                     f'<a href="{n["link"]}" target="_blank" '
                     f'style="font-size:13px;color:#1A1D23;text-decoration:none;font-weight:500;line-height:1.5;">'
-                    f'{pin}{n["title"]}</a></div>',
+                    f'{n["title"]}</a></div>',
                     unsafe_allow_html=True
                 )
         else:
             st.markdown(
                 '<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;'
-                'padding:24px;text-align:center;">'
-                '<div style="font-size:24px;margin-bottom:8px;">📰</div>'
+                'padding:20px;text-align:center;">'
+                '<div style="font-size:20px;margin-bottom:8px;">📰</div>'
                 '<div style="font-size:13px;color:#D97706;font-weight:600;">뉴스를 불러올 수 없습니다</div>'
-                '<div style="font-size:12px;color:#9CA3AF;margin-top:4px;">잠시 후 다시 시도해주세요</div></div>',
+                '<div style="font-size:12px;color:#9CA3AF;margin-top:4px;">'
+                '네트워크 연결을 확인하거나 잠시 후 다시 시도해주세요</div></div>',
                 unsafe_allow_html=True
             )
 
-    # ── TAB 5: 백테스트 ───────────────────────────────────────────────
+    # ── TAB 5: 계산 근거 ─────────────────────────────────────────────
     with tab5:
         st.markdown(
             '<div style="background:#F8FAFF;border:1px solid #DBEAFE;border-radius:8px;'
-            'padding:10px 14px;margin-bottom:14px;font-size:12px;color:#6B7280;">'
-            '과거 2년 데이터 기준 · 20 거래일(약 1개월) 후 수익률 검증 · 참고용</div>',
+            'padding:14px 16px;margin-bottom:16px;">'
+            '<b style="font-size:13px;color:#1A1D23;">승률 계산 공식 (Lv.1/2)</b>'
+            '<div style="font-family:\'JetBrains Mono\',monospace;font-size:12px;'
+            'color:#374151;margin-top:8px;line-height:2;">'
+            'weighted_Z = Σ(z_i × direction_i × driver_weight_i) / Σ(weight_i)<br>'
+            'macro_score = weighted_Z × 15<br>'
+            'z_penalty   = −z_stock × 3<br>'
+            'final       = clamp(50 + z_penalty + macro_score + news_bonus, 5, 95)'
+            '</div></div>',
             unsafe_allow_html=True
         )
 
-        with st.spinner("백테스트 계산 중... (첫 실행 시 30초 내외)"):
-            bt = run_backtest(target, cfg["indicators"])
+        items = [
+            ("기본값",    50.0,                      "#9CA3AF"),
+            ("주가 위치", breakdown["z_penalty"],    "#2563EB"),
+            ("거시 환경", breakdown["macro_score"],  zcolor(breakdown["macro_z"])),
+            ("뉴스 감성", breakdown["news_bonus"],   "#059669" if nb > 0 else "#DC2626"),
+        ]
+        comp_fig = go.Figure()
+        for lbl, val, clr in items:
+            comp_fig.add_trace(go.Bar(
+                name=lbl, x=[lbl], y=[val], marker_color=clr,
+                text=[f"{val:+.1f}"], textposition="outside",
+                textfont=dict(family="JetBrains Mono", size=12)
+            ))
+        comp_fig.update_layout(
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+            showlegend=False,
+            xaxis=dict(showgrid=False, tickfont=dict(size=12, color="#374151")),
+            yaxis=dict(showgrid=True, gridcolor="#F3F4F6", range=[-25, 75]),
+            margin=dict(t=20, b=10, l=0, r=0), height=220, barmode="group"
+        )
+        st.plotly_chart(comp_fig, use_container_width=True)
 
-        if bt is None:
-            st.info("데이터가 부족하여 백테스트를 실행할 수 없습니다.")
-        else:
-            # ── 요약 지표 4개 ────────────────────────────────────────
-            buy_clr  = "#059669" if bt["buy_acc"]  >= 55 else "#D97706" if bt["buy_acc"]  >= 45 else "#DC2626"
-            risk_clr = "#059669" if bt["risk_acc"] >= 55 else "#D97706" if bt["risk_acc"] >= 45 else "#DC2626"
-            shp_clr  = "#059669" if bt["sharpe"]   >= 0.5 else "#D97706" if bt["sharpe"] >= 0 else "#DC2626"
-            avg_clr  = "#059669" if bt["avg_ret_buy"] >= 0 else "#DC2626"
-
-            kpi_c = st.columns(4)
-            for col, (lbl, val, clr) in zip(kpi_c, [
-                ("매수 신호 적중률", f"{bt['buy_acc']}%",  buy_clr),
-                ("리스크 신호 적중률", f"{bt['risk_acc']}%", risk_clr),
-                ("매수 평균 수익",  f"{bt['avg_ret_buy']:+.1f}%", avg_clr),
-                ("샤프지수(근사)", f"{bt['sharpe']}",      shp_clr),
-            ]):
-                col.markdown(
-                    f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;'
-                    f'padding:10px;text-align:center;">'
-                    f'<div style="font-size:9px;color:#9CA3AF;text-transform:uppercase;'
-                    f'letter-spacing:0.5px;margin-bottom:4px;">{lbl}</div>'
-                    f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:18px;'
-                    f'font-weight:700;color:{clr};">{val}</div></div>',
-                    unsafe_allow_html=True
-                )
-
-            # ── 신호 분포 요약 ────────────────────────────────────────
-            st.markdown(
-                f'<div style="font-size:11px;color:#9CA3AF;text-align:center;margin:8px 0 14px;">'
-                f'총 {bt["total"]}개 신호 검증 · 매수 {bt["buy_count"]}회 · '
-                f'리스크 {bt["risk_count"]}회</div>',
-                unsafe_allow_html=True
-            )
-
-            # ── 신호별 수익률 바 차트 ─────────────────────────────────
-            if bt["buy_count"] > 0 or bt["risk_count"] > 0:
-                bar_labels = []
-                bar_vals   = []
-                bar_colors = []
-                if bt["buy_count"] > 0:
-                    bar_labels.append(f"매수 신호\n(n={bt['buy_count']})")
-                    bar_vals.append(bt["avg_ret_buy"])
-                    bar_colors.append("#059669" if bt["avg_ret_buy"] >= 0 else "#DC2626")
-                if bt["risk_count"] > 0:
-                    bar_labels.append(f"리스크 신호\n(n={bt['risk_count']})")
-                    bar_vals.append(bt["avg_ret_risk"])
-                    bar_colors.append("#059669" if bt["avg_ret_risk"] >= 0 else "#DC2626")
-
-                fig_bt = go.Figure(go.Bar(
-                    x=bar_labels, y=bar_vals,
-                    marker_color=bar_colors, opacity=0.85,
-                    text=[f"{v:+.2f}%" for v in bar_vals],
-                    textposition="outside",
-                    textfont=dict(family="JetBrains Mono", size=12),
-                ))
-                fig_bt.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                    xaxis=dict(showgrid=False, tickfont=dict(size=11, color="#374151")),
-                    yaxis=dict(showgrid=True, gridcolor="#F3F4F6",
-                               ticksuffix="%", tickfont=dict(size=10)),
-                    margin=dict(t=30, b=10, l=0, r=0), height=180,
-                    showlegend=False,
-                )
-                st.plotly_chart(fig_bt, use_container_width=True)
-
-            # ── 최근 5개 샘플 (간소) ──────────────────────────────────
-            if bt["samples"]:
-                st.markdown(
-                    '<div style="font-size:11px;font-weight:600;color:#6B7280;'
-                    'letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;">'
-                    '최근 신호 샘플</div>',
-                    unsafe_allow_html=True
-                )
-                for s in bt["samples"]:
-                    s_clr  = "#059669" if s["signal"] == "매수" else "#DC2626"
-                    r_clr  = "#059669" if s["ret"] >= 0 else "#DC2626"
-                    r_icon = "▲" if s["ret"] >= 0 else "▼"
-                    st.markdown(
-                        f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                        f'padding:8px 12px;background:#FFFFFF;border:1px solid #E8EAED;'
-                        f'border-radius:7px;margin-bottom:5px;">'
-                        f'<span style="font-size:11px;color:#9CA3AF;">{s["date"]}</span>'
-                        f'<span style="font-size:11px;font-weight:700;color:{s_clr};">'
-                        f'{s["signal"]} {s["score"]:.0f}%</span>'
-                        f'<span style="font-size:11px;color:#9CA3AF;">{s["pct"]:.0f}%ile</span>'
-                        f'<span style="font-family:\'JetBrains Mono\',monospace;font-size:12px;'
-                        f'font-weight:700;color:{r_clr};">{r_icon}{abs(s["ret"]):.1f}%</span>'
-                        f'</div>',
-                        unsafe_allow_html=True
-                    )
-
-            # ── 해석 안내 ─────────────────────────────────────────────
-            st.markdown(
-                '<div style="background:#F9FAFB;border:1px solid #E8EAED;border-radius:8px;'
-                'padding:10px 14px;margin-top:10px;font-size:11px;color:#9CA3AF;line-height:1.8;">'
-                '⚠ 백테스트는 과거 데이터 기반 참고 지표입니다. '
-                '과거 적중률이 미래 수익을 보장하지 않습니다.<br>'
-                '샤프지수 0.5 이상이면 신호 품질이 어느 정도 검증된 수준입니다.</div>',
-                unsafe_allow_html=True
-            )
-
+        st.markdown(
+            f'<div style="background:#F9FAFB;border:1px solid #E8EAED;border-radius:8px;'
+            f'padding:14px;font-family:\'JetBrains Mono\',monospace;font-size:12px;'
+            f'color:#374151;line-height:2;">'
+            f'50.0 (기본)<br>'
+            f'{breakdown["z_penalty"]:+.1f} (주가 Z={zs:+.2f} × −3)<br>'
+            f'{breakdown["macro_score"]:+.1f} (거시 가중Z={breakdown["macro_z"]:+.3f} × 15)<br>'
+            f'{breakdown["news_bonus"]:+.1f} (뉴스 보정)<br>'
+            f'──────────────<br>'
+            f'합계 {breakdown["total_raw"]:+.1f} → clamp → '
+            f'<b style="color:{sv_};">{fw}%</b></div>',
+            unsafe_allow_html=True
+        )
