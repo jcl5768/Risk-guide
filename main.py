@@ -230,8 +230,8 @@ with st.sidebar:
                         "shares":    round(ns, 3),
                         "avg_price": na,
                     })
-                    st.session_state.show_add = False
-                    # 검색 상태 초기화
+                    # show_add 유지 — 추가 후에도 검색창이 계속 표시됨
+                    # 검색 상태만 초기화
                     for k in ("_sel_ticker", "_sel_name", "search_q", "sg_select"):
                         st.session_state.pop(k, None)
                     st.rerun()
