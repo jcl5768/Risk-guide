@@ -8,6 +8,8 @@ from engine import (
     get_macro_correlation, get_chart_data, get_price_stats,
     calc_win_rate, get_weighted_z, run_backtest,
     get_signal, zcolor, zdesc, corr_color,
+    get_fear_greed, get_portfolio_lv1,
+    calc_var, calc_monte_carlo, calc_bayesian_update,
 )
 
 
@@ -257,6 +259,46 @@ def render_main_page():
 
     st.markdown("<br>", unsafe_allow_html=True)
     portfolio = st.session_state.portfolio
+
+    # ── Lv.1: 포트폴리오 날씨 ────────────────────────────────────────
+    if portfolio:
+        fg_score, fg_label, fg_clr = get_fear_greed()
+        with st.spinner("Lv.1 분석 중..."):
+            avg_win, w_icon, w_label, w_clr, w_summary = get_portfolio_lv1(portfolio)
+        st.markdown(
+            f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
+            f'padding:14px 18px;margin-bottom:16px;">'
+            f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">'
+            f'<span class="lv1">Lv.1</span>'
+            f'<span style="font-size:12px;font-weight:600;color:#1A1D23;">오늘 내 계좌 날씨</span>'
+            f'</div>'
+            f'<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
+            # 날씨 아이콘 + 승률
+            f'<div style="text-align:center;min-width:70px;">'
+            f'<div style="font-size:36px;line-height:1;">{w_icon}</div>'
+            f'<div style="font-size:11px;font-weight:700;color:{w_clr};margin-top:4px;">{w_label}</div>'
+            f'</div>'
+            # 포트폴리오 평균 승률 게이지
+            f'<div style="flex:1;min-width:140px;">'
+            f'<div style="display:flex;justify-content:space-between;font-size:11px;'
+            f'color:#6B7280;margin-bottom:4px;">'
+            f'<span>포트폴리오 평균 승률</span>'
+            f'<span style="font-weight:700;color:{w_clr};">{avg_win:.0f}%</span></div>'
+            f'<div style="height:8px;background:#F3F4F6;border-radius:4px;">'
+            f'<div style="height:100%;width:{avg_win}%;background:{w_clr};border-radius:4px;'
+            f'transition:width 0.3s;"></div></div>'
+            f'<div style="font-size:11px;color:#6B7280;margin-top:6px;">{w_summary}</div>'
+            f'</div>'
+            # 공포탐욕 지수
+            f'<div style="text-align:center;min-width:60px;">'
+            f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:2px;">공포·탐욕</div>'
+            f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:20px;'
+            f'font-weight:700;color:{fg_clr};">{fg_score}</div>'
+            f'<div style="font-size:10px;color:{fg_clr};font-weight:600;">{fg_label}</div>'
+            f'</div>'
+            f'</div></div>',
+            unsafe_allow_html=True
+        )
 
     if not portfolio:
         st.markdown(
@@ -641,6 +683,171 @@ def render_detail_page():
                 f'text-transform:uppercase;margin-bottom:3px;">{lbl}</div>'
                 f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:16px;'
                 f'font-weight:700;color:{clr};">{val}</div></div>',
+                unsafe_allow_html=True
+            )
+
+        # ── Lv.1 / Lv.2 / Lv.3 패널 ─────────────────────────────────
+        st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
+        lv_tab1, lv_tab2, lv_tab3 = st.tabs(["☀️ Lv.1 직관", "📊 Lv.2 분석", "🔬 Lv.3 심화"])
+
+        # ── Lv.1: 직관 ───────────────────────────────────────────────
+        with lv_tab1:
+            fg_score, fg_label, fg_clr = get_fear_greed()
+            pct = breakdown.get("percentile", 50.0)
+
+            # 날씨 신호등
+            if fw >= 65:   w_icon, w_label, w_clr = "☀️", "맑음 — 매수 우위",  "#059669"
+            elif fw >= 50: w_icon, w_label, w_clr = "⛅", "구름 — 중립 관망",  "#D97706"
+            else:          w_icon, w_label, w_clr = "🌧️", "비 — 리스크 경고", "#DC2626"
+
+            st.markdown(
+                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
+                f'padding:16px;margin-bottom:10px;">'
+                f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">'
+                f'<span class="lv1">Lv.1</span>'
+                f'<span style="font-size:12px;font-weight:600;color:#1A1D23;">직관 요약</span>'
+                f'</div>'
+                # 날씨
+                f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">'
+                f'<div style="font-size:40px;">{w_icon}</div>'
+                f'<div>'
+                f'<div style="font-size:14px;font-weight:700;color:{w_clr};">{w_label}</div>'
+                f'<div style="font-size:12px;color:#6B7280;margin-top:2px;">'
+                f'오늘의 승률 <b style="color:{sv_};">{fw:.0f}%</b></div>'
+                f'</div></div>'
+                # 승률 게이지
+                f'<div style="margin-bottom:12px;">'
+                f'<div style="display:flex;justify-content:space-between;font-size:11px;'
+                f'color:#9CA3AF;margin-bottom:4px;"><span>0%</span><span>50%</span><span>100%</span></div>'
+                f'<div style="height:10px;background:#F3F4F6;border-radius:5px;position:relative;">'
+                f'<div style="position:absolute;top:0;left:50%;width:1px;height:100%;background:#D1D5DB;"></div>'
+                f'<div style="height:100%;width:{fw}%;background:{sv_};border-radius:5px;opacity:0.85;"></div>'
+                f'</div></div>'
+                # 1년 중 가격 위치
+                f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                f'background:#F9FAFB;border-radius:8px;padding:10px 12px;margin-bottom:10px;">'
+                f'<span style="font-size:12px;color:#6B7280;">1년 중 가격 위치</span>'
+                f'<span style="font-size:14px;font-weight:700;color:{zcolor(zs)};">'
+                f'하위 {pct:.0f}%</span></div>'
+                # 공포탐욕
+                f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                f'background:#F9FAFB;border-radius:8px;padding:10px 12px;">'
+                f'<span style="font-size:12px;color:#6B7280;">시장 공포·탐욕 지수</span>'
+                f'<span style="font-size:14px;font-weight:700;color:{fg_clr};">'
+                f'{fg_score} · {fg_label}</span></div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+        # ── Lv.2: 분석 (기존 로직 요약) ─────────────────────────────
+        with lv_tab2:
+            macro_sign    = "+" if weighted_z * 15 >= 0 else ""
+            macro_contrib = f"{macro_sign}{weighted_z * 15:.1f}"
+            news_adj      = breakdown.get("news_bonus", 0)
+            pos_score     = breakdown.get("position_score", 0)
+
+            st.markdown(
+                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
+                f'padding:16px;margin-bottom:10px;">'
+                f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">'
+                f'<span class="lv2">Lv.2</span>'
+                f'<span style="font-size:12px;font-weight:600;color:#1A1D23;">분석 근거</span>'
+                f'</div>'
+                f'<div style="font-size:12px;color:#6B7280;margin-bottom:12px;">'
+                f'승률 <b style="color:{sv_};">{fw:.0f}%</b> = '
+                f'기본(50) + 가격위치({pos_score:+.1f}) + 거시환경({macro_contrib}%p) + 뉴스({news_adj:+.1f})</div>'
+                # 3개 항목
+                + "".join([
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                    f'padding:8px 12px;background:#F9FAFB;border-radius:7px;margin-bottom:6px;">'
+                    f'<span style="font-size:12px;color:#374151;">{lbl}</span>'
+                    f'<span style="font-size:13px;font-weight:700;color:{c};">{val}</span></div>'
+                    for lbl, val, c in [
+                        ("📍 가격 위치 (1년 %ile)", f"{breakdown.get('percentile',50):.0f}%ile → {pos_score:+.1f}점", zcolor(zs)),
+                        ("📡 거시 환경 (동적 가중Z)", f"{weighted_z:+.3f}σ → {macro_contrib}%p", zcolor(weighted_z)),
+                        ("📰 뉴스 감성 (감쇠 적용)", f"{news_adj:+.1f}점", "#059669" if news_adj >= 0 else "#DC2626"),
+                    ]
+                ])
+                + f'</div>',
+                unsafe_allow_html=True
+            )
+
+        # ── Lv.3: 심화 ───────────────────────────────────────────────
+        with lv_tab3:
+            st.markdown(
+                f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:12px;">'
+                f'<span class="lv3">Lv.3</span>'
+                f'<span style="font-size:12px;font-weight:600;color:#1A1D23;">확률 심화 분석</span>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+            with st.spinner("Lv.3 계산 중..."):
+                var_95  = calc_var(target, confidence=0.95)
+                mc_data = calc_monte_carlo(target, days=20, simulations=500)
+
+            # VaR
+            if var_95 is not None:
+                var_clr = "#DC2626" if var_95 < -3 else "#D97706" if var_95 < -1.5 else "#059669"
+                st.markdown(
+                    f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
+                    f'padding:14px 16px;margin-bottom:10px;">'
+                    f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:4px;">📉 VaR (95% · 1일)</div>'
+                    f'<div style="font-size:22px;font-weight:700;color:{var_clr};">{var_95:.2f}%</div>'
+                    f'<div style="font-size:11px;color:#6B7280;margin-top:4px;">'
+                    f'95% 확률로 하루 최대 <b>{var_95:.2f}%</b> 이상 손실 안 남</div>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+
+            # 몬테카를로
+            if mc_data:
+                up_clr = "#059669" if mc_data["prob_up"] >= 50 else "#DC2626"
+                st.markdown(
+                    f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
+                    f'padding:14px 16px;margin-bottom:10px;">'
+                    f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:8px;">'
+                    f'🎲 몬테카를로 시뮬레이션 (500회 · {mc_data["days"]}일 후)</div>'
+                    f'<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+                    + "".join([
+                        f'<div style="flex:1;min-width:70px;text-align:center;background:#F9FAFB;'
+                        f'border-radius:8px;padding:8px;">'
+                        f'<div style="font-size:9px;color:#9CA3AF;">{lbl}</div>'
+                        f'<div style="font-size:14px;font-weight:700;color:{c};">${val:.0f}</div></div>'
+                        for lbl, val, c in [
+                            ("비관 (10%)", mc_data["p10"], "#DC2626"),
+                            ("중립 (50%)", mc_data["p50"], "#D97706"),
+                            ("낙관 (90%)", mc_data["p90"], "#059669"),
+                        ]
+                    ])
+                    + f'</div>'
+                    f'<div style="margin-top:10px;font-size:12px;color:{up_clr};font-weight:600;">'
+                    f'상승 확률: {mc_data["prob_up"]:.0f}%</div>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+
+            # 베이지안 업데이트 시나리오
+            st.markdown(
+                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
+                f'padding:14px 16px;">'
+                f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:8px;">🔄 베이지안 시나리오</div>'
+                f'<div style="font-size:11px;color:#6B7280;margin-bottom:8px;">'
+                f'현재 승률 <b>{fw:.0f}%</b> 기준, 새 이벤트 발생 시</div>'
+                + "".join([
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                    f'padding:7px 10px;background:#F9FAFB;border-radius:7px;margin-bottom:5px;">'
+                    f'<span style="font-size:11px;color:#374151;">{label}</span>'
+                    f'<span style="font-size:13px;font-weight:700;color:{clr};">'
+                    f'{calc_bayesian_update(fw, inds, direction):.0f}%</span></div>'
+                    for label, direction, clr in [
+                        ("📈 호재 이벤트 발생 시", +1, "#059669"),
+                        ("📉 악재 이벤트 발생 시", -1, "#DC2626"),
+                    ]
+                ])
+                + f'<div style="font-size:10px;color:#B0B7C3;margin-top:8px;">'
+                f'베이지안 업데이트 기반 사후 승률 추정 · 참고용</div>'
+                f'</div>',
                 unsafe_allow_html=True
             )
 
