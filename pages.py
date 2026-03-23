@@ -53,6 +53,15 @@ div[data-testid="stNumberInput"] input,div[data-testid="stTextInput"] input,div[
 .stTabs [aria-selected="true"]{background:#FFFFFF !important;color:#1A1D23 !important;box-shadow:0 1px 3px rgba(0,0,0,0.1);}
 .stSlider > div > div > div{background:#2563EB !important;}
 .stSpinner > div{border-top-color:#2563EB !important;}
+/* 모바일 최적화 */
+@media (max-width: 768px) {
+  .stock-card{padding:12px 14px !important;}
+  .ind-card{padding:10px 12px !important;}
+  .action-table td{padding:8px 8px !important;font-size:11px !important;}
+  .action-table th{padding:6px 8px !important;font-size:11px !important;}
+  .stTabs [data-baseweb="tab"]{padding:0 8px !important;font-size:11px !important;}
+  section[data-testid="stSidebar"]{min-width:260px !important;}
+}
 </style>
 """, unsafe_allow_html=True)
 
