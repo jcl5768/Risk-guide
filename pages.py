@@ -681,11 +681,6 @@ def render_detail_page():
                     ):
                         st.session_state.chart_period = label
                         st.rerun()
-                        use_container_width=True,
-                        type="primary" if pk == label else "secondary"
-                    ):
-                        st.session_state.chart_period = label
-                        st.rerun()
 
         else:
             st.info("차트 데이터를 불러올 수 없습니다.")
@@ -1292,3 +1287,4 @@ def render_detail_page():
                 '샤프지수 0.5 이상이면 신호 품질이 어느 정도 검증된 수준입니다.</div>',
                 unsafe_allow_html=True
             )
+
