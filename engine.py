@@ -624,3 +624,180 @@ def corr_color(corr, direction):
     aligned = (corr > 0 and direction == 1) or (corr < 0 and direction == -1)
     if abs(corr) < 0.15: return "#9CA3AF"
     return "#059669" if aligned else "#DC2626"
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ── LEVEL 1: 직관 지표 ────────────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+
+@st.cache_data(ttl=300)
+def get_fear_greed(vix_ticker="^VIX"):
+    """
+    Lv.1 — 공포·탐욕 지수 (0~100)
+    VIX 기반으로 시장 심리를 단순화.
+    VIX 낮을수록 탐욕(100), 높을수록 공포(0).
+    """
+    try:
+        _, vix = get_z_and_price(vix_ticker)
+        if vix <= 0: return 50, "중립", "#D97706"
+        # VIX 12 이하 → 극도 탐욕(90), VIX 35 이상 → 극도 공포(10)
+        score = round(max(5, min(95, 100 - (vix - 12) / (35 - 12) * 80)), 0)
+        if score >= 75:   label, clr = "탐욕",    "#059669"
+        elif score >= 55: label, clr = "낙관",    "#10B981"
+        elif score >= 45: label, clr = "중립",    "#D97706"
+        elif score >= 25: label, clr = "공포",    "#EF4444"
+        else:             label, clr = "극도공포", "#DC2626"
+        return int(score), label, clr
+    except Exception:
+        return 50, "중립", "#D97706"
+
+
+def get_portfolio_lv1(portfolio):
+    """
+    Lv.1 — 포트폴리오 전체 가중 평균 승률 + 날씨 신호등
+    반환: (weighted_win, weather_icon, weather_label, weather_clr, summary_text)
+    """
+    if not portfolio:
+        return 50.0, "⛅", "데이터 없음", "#D97706", "종목을 추가해주세요."
+
+    total_w = 0.0
+    weighted_win = 0.0
+    worst_ticker = None
+    worst_win = 100.0
+
+    for stock in portfolio:
+        try:
+            zs, price    = get_z_and_price(stock["ticker"])
+            _, _, inds   = get_sector_analysis(stock["ticker"])
+            nb, items    = get_news(stock["ticker"])
+            win, _       = calc_win_rate(zs, inds, nb, stock_ticker=stock["ticker"], news_items=items)
+            w            = stock.get("weight", 10)
+            weighted_win += win * w
+            total_w      += w
+            if win < worst_win:
+                worst_win    = win
+                worst_ticker = stock["ticker"]
+        except Exception:
+            continue
+
+    if total_w == 0:
+        return 50.0, "⛅", "계산 불가", "#D97706", "데이터를 불러올 수 없습니다."
+
+    avg_win = round(weighted_win / total_w, 1)
+
+    if avg_win >= 65:
+        icon, label, clr = "☀️", "맑음",   "#059669"
+        summary = f"포트폴리오 전반이 우호적입니다. 비중을 유지하세요."
+    elif avg_win >= 50:
+        icon, label, clr = "⛅", "구름",   "#D97706"
+        summary = f"전반적으로 중립입니다."
+        if worst_ticker:
+            summary += f" {worst_ticker} 를 주시하세요."
+    else:
+        icon, label, clr = "🌧️", "비",    "#DC2626"
+        summary = f"리스크 경고 구간입니다."
+        if worst_ticker:
+            summary += f" {worst_ticker}({worst_win:.0f}%)가 가장 취약합니다."
+
+    return avg_win, icon, label, clr, summary
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ── LEVEL 3: 심화 확률 모델 ───────────────────────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+
+@st.cache_data(ttl=600)
+def calc_var(ticker, confidence=0.95, horizon_days=1):
+    """
+    Lv.3 — VaR (Value at Risk)
+    confidence 수준에서 horizon_days 동안 발생 가능한 최대 손실률(%) 반환.
+    예: 95% VaR = -3.2% → "95% 확률로 하루 최대 -3.2% 이상 안 깨짐"
+    """
+    try:
+        raw    = yf.download(ticker, period="1y", interval="1d", progress=False, timeout=10)
+        closes = _extract_close(raw).dropna()
+        if len(closes) < 30: return None
+        returns = closes.pct_change().dropna()
+        var     = float(np.percentile(returns, (1 - confidence) * 100)) * np.sqrt(horizon_days) * 100
+        return round(var, 2)
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=600)
+def calc_monte_carlo(ticker, days=30, simulations=500):
+    """
+    Lv.3 — 몬테카를로 시뮬레이션
+    과거 변동성 기반으로 simulations개의 가상 가격 경로 생성.
+    반환: {
+        "paths": 최근 10개 경로 (표시용),
+        "current": 현재가,
+        "p10": 하위 10% 가격 (비관),
+        "p50": 중앙값 (중립),
+        "p90": 상위 90% 가격 (낙관),
+        "prob_up": 상승 확률(%),
+    }
+    """
+    try:
+        raw    = yf.download(ticker, period="1y", interval="1d", progress=False, timeout=10)
+        closes = _extract_close(raw).dropna()
+        if len(closes) < 30: return None
+
+        current  = float(closes.iloc[-1])
+        returns  = closes.pct_change().dropna()
+        mu       = float(returns.mean())
+        sigma    = float(returns.std())
+
+        np.random.seed(42)
+        rand_returns = np.random.normal(mu, sigma, (simulations, days))
+        price_paths  = current * np.cumprod(1 + rand_returns, axis=1)
+
+        final_prices = price_paths[:, -1]
+        p10  = round(float(np.percentile(final_prices, 10)), 2)
+        p50  = round(float(np.percentile(final_prices, 50)), 2)
+        p90  = round(float(np.percentile(final_prices, 90)), 2)
+        prob_up = round(float((final_prices > current).mean() * 100), 1)
+
+        # 표시용 10개 경로만 반환
+        sample_paths = price_paths[:10].tolist()
+
+        return {
+            "paths":    sample_paths,
+            "current":  current,
+            "p10":      p10,
+            "p50":      p50,
+            "p90":      p90,
+            "prob_up":  prob_up,
+            "days":     days,
+        }
+    except Exception:
+        return None
+
+
+@st.cache_data(ttl=600)
+def calc_bayesian_update(prior_win, indicators, new_event_direction):
+    """
+    Lv.3 — 간이 베이지안 업데이트
+    새로운 매크로 이벤트(긍정/부정)가 발생했을 때 사후 승률 추정.
+    new_event_direction: +1(호재) or -1(악재)
+    """
+    try:
+        # 단순화: 이벤트 강도에 따라 사전 승률을 베이즈적으로 조정
+        # P(up|event) = P(event|up)*P(up) / P(event)
+        # 여기서는 근사적으로 likelihood ratio 방식 사용
+        prior    = prior_win / 100.0
+        # 호재 이벤트: 상승 가능성 likelihood 1.4배, 하락 가능성 0.7배
+        if new_event_direction == +1:
+            likelihood_up   = 1.4
+            likelihood_down = 0.7
+        else:
+            likelihood_up   = 0.7
+            likelihood_down = 1.4
+
+        posterior_num = likelihood_up * prior
+        posterior_den = likelihood_up * prior + likelihood_down * (1 - prior)
+        posterior     = posterior_num / posterior_den if posterior_den > 0 else prior
+
+        return round(posterior * 100, 1)
+    except Exception:
+        return prior_win
