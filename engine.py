@@ -81,10 +81,10 @@ def get_percentile(ticker):
 
 # ── 차트 데이터 ───────────────────────────────────────────────────────────────
 PERIOD_MAP = {
-    "1일": ("3mo", "1d"),   # 약 1달치 일봉 (~65봉)
-    "1주": ("1y",  "1wk"),  # 약 3달치 주봉 (~52봉 중 13개)
-    "1달": ("5y",  "1mo"),  # 약 1년치 월봉 (~60봉)
-    "1년": ("max", "3mo"),  # 최대 5년+ 분기봉
+    "1일": ("5d",  "5m"),
+    "1주": ("5d",  "1h"),
+    "1달": ("1mo", "1d"),
+    "1년": ("1y",  "1d"),
 }
 
 @st.cache_data(ttl=120)
@@ -326,7 +326,7 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
     else:
         dyn_w   = None
         macro_z = get_weighted_z(indicators)
-    macro_score = round(macro_z * 15, 1)
+    macro_score = round(max(-20.0, min(20.0, macro_z * 15)), 1)
 
     # 3. 뉴스 (시간 감쇠)
     if news_items:
@@ -640,8 +640,8 @@ def get_fear_greed(vix_ticker="^VIX"):
     try:
         _, vix = get_z_and_price(vix_ticker)
         if vix <= 0: return 50, "중립", "#D97706"
-        # VIX 12 이하 → 극도 탐욕(90), VIX 35 이상 → 극도 공포(10)
-        score = round(max(5, min(95, 100 - (vix - 12) / (35 - 12) * 80)), 0)
+        # VIX 10 → 75(탐욕), VIX 20 → 50(중립), VIX 40 → 0(극도공포)
+        score = round(max(5, min(95, 100 - (vix / 40 * 100))), 0)
         if score >= 75:   label, clr = "탐욕",    "#059669"
         elif score >= 55: label, clr = "낙관",    "#10B981"
         elif score >= 45: label, clr = "중립",    "#D97706"
@@ -730,12 +730,15 @@ def calc_monte_carlo(ticker, days=30, simulations=500):
     Lv.3 — 몬테카를로 시뮬레이션
     과거 변동성 기반으로 simulations개의 가상 가격 경로 생성.
     반환: {
-        "paths": 최근 10개 경로 (표시용),
         "current": 현재가,
         "p10": 하위 10% 가격 (비관),
         "p50": 중앙값 (중립),
         "p90": 상위 90% 가격 (낙관),
         "prob_up": 상승 확률(%),
+        "max_gain": 시뮬레이션 중 최대 수익률(%),
+        "max_loss": 시뮬레이션 중 최대 손실률(%),
+        "days": 기간(일),
+        "periods": 기간별 결과 딕셔너리 (1달/6개월/1년/5년),
     }
     """
     try:
@@ -743,32 +746,70 @@ def calc_monte_carlo(ticker, days=30, simulations=500):
         closes = _extract_close(raw).dropna()
         if len(closes) < 30: return None
 
-        current  = float(closes.iloc[-1])
-        returns  = closes.pct_change().dropna()
-        mu       = float(returns.mean())
-        sigma    = float(returns.std())
+        current = float(closes.iloc[-1])
+        returns = closes.pct_change().dropna()
+        mu      = float(returns.mean())
+        sigma   = float(returns.std())
 
         np.random.seed(42)
-        rand_returns = np.random.normal(mu, sigma, (simulations, days))
-        price_paths  = current * np.cumprod(1 + rand_returns, axis=1)
 
-        final_prices = price_paths[:, -1]
-        p10  = round(float(np.percentile(final_prices, 10)), 2)
-        p50  = round(float(np.percentile(final_prices, 50)), 2)
-        p90  = round(float(np.percentile(final_prices, 90)), 2)
-        prob_up = round(float((final_prices > current).mean() * 100), 1)
+        # 기간별 설정 (거래일 기준)
+        period_map = {
+            "1달":   21,
+            "6개월": 126,
+            "1년":   252,
+            "5년":   1260,
+        }
 
-        # 표시용 10개 경로만 반환
-        sample_paths = price_paths[:10].tolist()
+        periods_result = {}
+        for label, d in period_map.items():
+            rand_ret     = np.random.normal(mu, sigma, (simulations, d))
+            price_paths  = current * np.cumprod(1 + rand_ret, axis=1)
+            final_prices = price_paths[:, -1]
 
+            # 최종 가격 기준
+            p10     = round(float(np.percentile(final_prices, 10)), 2)
+            p50     = round(float(np.percentile(final_prices, 50)), 2)
+            p90     = round(float(np.percentile(final_prices, 90)), 2)
+            prob_up = round(float((final_prices > current).mean() * 100), 1)
+
+            # 경로 중 최대 수익·최대 손실 (경로 내 최고점·최저점 기준)
+            path_highs = price_paths.max(axis=1)   # 각 경로의 최고가
+            path_lows  = price_paths.min(axis=1)   # 각 경로의 최저가
+            max_gain   = round(float((path_highs.max() - current) / current * 100), 1)
+            max_loss   = round(float((path_lows.min()  - current) / current * 100), 1)
+
+            # 95% 신뢰구간 기준 현실적 최대수익·최대손실
+            gain_p95 = round(float((np.percentile(path_highs, 95) - current) / current * 100), 1)
+            loss_p95 = round(float((np.percentile(path_lows,   5) - current) / current * 100), 1)
+
+            periods_result[label] = {
+                "days":      d,
+                "p10":       p10,
+                "p50":       p50,
+                "p90":       p90,
+                "prob_up":   prob_up,
+                "max_gain":  max_gain,    # 시뮬레이션 전체 최대 수익
+                "max_loss":  max_loss,    # 시뮬레이션 전체 최대 손실
+                "gain_p95":  gain_p95,    # 95% 신뢰구간 최대 수익 (더 현실적)
+                "loss_p95":  loss_p95,    # 95% 신뢰구간 최대 손실
+                "ret_p10":   round((p10 - current) / current * 100, 1),
+                "ret_p50":   round((p50 - current) / current * 100, 1),
+                "ret_p90":   round((p90 - current) / current * 100, 1),
+            }
+
+        # 기본값 (1달 기준, 하위호환)
+        base = periods_result["1달"]
         return {
-            "paths":    sample_paths,
             "current":  current,
-            "p10":      p10,
-            "p50":      p50,
-            "p90":      p90,
-            "prob_up":  prob_up,
+            "p10":      base["p10"],
+            "p50":      base["p50"],
+            "p90":      base["p90"],
+            "prob_up":  base["prob_up"],
+            "max_gain": base["max_gain"],
+            "max_loss": base["max_loss"],
             "days":     days,
+            "periods":  periods_result,
         }
     except Exception:
         return None
