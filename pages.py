@@ -764,6 +764,19 @@ def render_detail_page():
             news_adj      = breakdown.get("news_bonus", 0)
             pos_score     = breakdown.get("position_score", 0)
 
+            lv2_rows = ""
+            for lbl, val, c in [
+                ("📍 가격 위치 (1년 %ile)", f"{breakdown.get('percentile',50):.0f}%ile → {pos_score:+.1f}점", zcolor(zs)),
+                ("📡 거시 환경 (동적 가중Z)", f"{weighted_z:+.3f}σ → {macro_contrib}%p", zcolor(weighted_z)),
+                ("📰 뉴스 감성 (감쇠 적용)", f"{news_adj:+.1f}점", "#059669" if news_adj >= 0 else "#DC2626"),
+            ]:
+                lv2_rows += (
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                    f'padding:8px 12px;background:#F9FAFB;border-radius:7px;margin-bottom:6px;">'
+                    f'<span style="font-size:12px;color:#374151;">{lbl}</span>'
+                    f'<span style="font-size:13px;font-weight:700;color:{c};">{val}</span></div>'
+                )
+
             st.markdown(
                 f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
                 f'padding:16px;margin-bottom:10px;">'
@@ -774,19 +787,8 @@ def render_detail_page():
                 f'<div style="font-size:12px;color:#6B7280;margin-bottom:12px;">'
                 f'승률 <b style="color:{sv_};">{fw:.0f}%</b> = '
                 f'기본(50) + 가격위치({pos_score:+.1f}) + 거시환경({macro_contrib}%p) + 뉴스({news_adj:+.1f})</div>'
-                # 3개 항목
-                + "".join([
-                    f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                    f'padding:8px 12px;background:#F9FAFB;border-radius:7px;margin-bottom:6px;">'
-                    f'<span style="font-size:12px;color:#374151;">{lbl}</span>'
-                    f'<span style="font-size:13px;font-weight:700;color:{c};">{val}</span></div>'
-                    for lbl, val, c in [
-                        ("📍 가격 위치 (1년 %ile)", f"{breakdown.get('percentile',50):.0f}%ile → {pos_score:+.1f}점", zcolor(zs)),
-                        ("📡 거시 환경 (동적 가중Z)", f"{weighted_z:+.3f}σ → {macro_contrib}%p", zcolor(weighted_z)),
-                        ("📰 뉴스 감성 (감쇠 적용)", f"{news_adj:+.1f}점", "#059669" if news_adj >= 0 else "#DC2626"),
-                    ]
-                ])
-                + f'</div>',
+                f'{lv2_rows}'
+                f'</div>',
                 unsafe_allow_html=True
             )
 
@@ -821,24 +823,24 @@ def render_detail_page():
             # 몬테카를로
             if mc_data:
                 up_clr = "#059669" if mc_data["prob_up"] >= 50 else "#DC2626"
+                mc_cards = ""
+                for lbl, val, c in [
+                    ("비관 (10%)", mc_data["p10"], "#DC2626"),
+                    ("중립 (50%)", mc_data["p50"], "#D97706"),
+                    ("낙관 (90%)", mc_data["p90"], "#059669"),
+                ]:
+                    mc_cards += (
+                        f'<div style="flex:1;min-width:70px;text-align:center;background:#F9FAFB;'
+                        f'border-radius:8px;padding:8px;">'
+                        f'<div style="font-size:9px;color:#9CA3AF;">{lbl}</div>'
+                        f'<div style="font-size:14px;font-weight:700;color:{c};">${val:.0f}</div></div>'
+                    )
                 st.markdown(
                     f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
                     f'padding:14px 16px;margin-bottom:10px;">'
                     f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:8px;">'
                     f'🎲 몬테카를로 시뮬레이션 (500회 · {mc_data["days"]}일 후)</div>'
-                    f'<div style="display:flex;gap:10px;flex-wrap:wrap;">'
-                    + "".join([
-                        f'<div style="flex:1;min-width:70px;text-align:center;background:#F9FAFB;'
-                        f'border-radius:8px;padding:8px;">'
-                        f'<div style="font-size:9px;color:#9CA3AF;">{lbl}</div>'
-                        f'<div style="font-size:14px;font-weight:700;color:{c};">${val:.0f}</div></div>'
-                        for lbl, val, c in [
-                            ("비관 (10%)", mc_data["p10"], "#DC2626"),
-                            ("중립 (50%)", mc_data["p50"], "#D97706"),
-                            ("낙관 (90%)", mc_data["p90"], "#059669"),
-                        ]
-                    ])
-                    + f'</div>'
+                    f'<div style="display:flex;gap:10px;flex-wrap:wrap;">{mc_cards}</div>'
                     f'<div style="margin-top:10px;font-size:12px;color:{up_clr};font-weight:600;">'
                     f'상승 확률: {mc_data["prob_up"]:.0f}%</div>'
                     f'</div>',
@@ -846,24 +848,26 @@ def render_detail_page():
                 )
 
             # 베이지안 업데이트 시나리오
+            bayes_rows = ""
+            for label, direction, clr in [
+                ("📈 호재 이벤트 발생 시", +1, "#059669"),
+                ("📉 악재 이벤트 발생 시", -1, "#DC2626"),
+            ]:
+                updated = calc_bayesian_update(fw, inds, direction)
+                bayes_rows += (
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;'
+                    f'padding:7px 10px;background:#F9FAFB;border-radius:7px;margin-bottom:5px;">'
+                    f'<span style="font-size:11px;color:#374151;">{label}</span>'
+                    f'<span style="font-size:13px;font-weight:700;color:{clr};">{updated:.0f}%</span></div>'
+                )
             st.markdown(
                 f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
                 f'padding:14px 16px;">'
                 f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:8px;">🔄 베이지안 시나리오</div>'
                 f'<div style="font-size:11px;color:#6B7280;margin-bottom:8px;">'
                 f'현재 승률 <b>{fw:.0f}%</b> 기준, 새 이벤트 발생 시</div>'
-                + "".join([
-                    f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                    f'padding:7px 10px;background:#F9FAFB;border-radius:7px;margin-bottom:5px;">'
-                    f'<span style="font-size:11px;color:#374151;">{label}</span>'
-                    f'<span style="font-size:13px;font-weight:700;color:{clr};">'
-                    f'{calc_bayesian_update(fw, inds, direction):.0f}%</span></div>'
-                    for label, direction, clr in [
-                        ("📈 호재 이벤트 발생 시", +1, "#059669"),
-                        ("📉 악재 이벤트 발생 시", -1, "#DC2626"),
-                    ]
-                ])
-                + f'<div style="font-size:10px;color:#B0B7C3;margin-top:8px;">'
+                f'{bayes_rows}'
+                f'<div style="font-size:10px;color:#B0B7C3;margin-top:8px;">'
                 f'베이지안 업데이트 기반 사후 승률 추정 · 참고용</div>'
                 f'</div>',
                 unsafe_allow_html=True
