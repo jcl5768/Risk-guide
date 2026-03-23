@@ -43,14 +43,16 @@ def detect_sector(ticker):
     try:
         info = yf.Ticker(ticker).info
         return SECTOR_MAP.get(info.get("sector","Unknown"), "Unknown")
-    except: return "Unknown"
+    except Exception:
+        return "Unknown"
 
 
 # ── 주가 Z-Score + Percentile ─────────────────────────────────────────────────
 @st.cache_data(ttl=300)
 def get_z_and_price(ticker):
     try:
-        raw  = yf.download(ticker, period="1y", interval="1d", progress=False)
+        raw  = yf.download(ticker, period="1y", interval="1d", progress=False, timeout=10)
+        if raw is None or raw.empty: return 0.0, 0.0
         data = _extract_close(raw).dropna()
         if len(data) < 21:
             return 0.0, float(data.iloc[-1]) if len(data) > 0 else 0.0
@@ -59,7 +61,7 @@ def get_z_and_price(ticker):
         std  = float(data.tail(20).std())
         z    = round((cur - mean) / std, 2) if std > 0 else 0.0
         return z, round(cur, 2)
-    except:
+    except Exception:
         return 0.0, 0.0
 
 
@@ -67,12 +69,13 @@ def get_z_and_price(ticker):
 def get_percentile(ticker):
     """현재가가 1년 데이터 중 몇 번째 백분위인지 (0~100)"""
     try:
-        raw  = yf.download(ticker, period="1y", interval="1d", progress=False)
+        raw  = yf.download(ticker, period="1y", interval="1d", progress=False, timeout=10)
+        if raw is None or raw.empty: return 50.0
         data = _extract_close(raw).dropna()
         if len(data) < 30: return 50.0
         cur = float(data.iloc[-1])
         return round(float((data < cur).sum() / len(data) * 100), 1)
-    except:
+    except Exception:
         return 50.0
 
 
@@ -88,9 +91,10 @@ PERIOD_MAP = {
 def get_chart_data(ticker, period_key="1달"):
     period, interval = PERIOD_MAP.get(period_key, ("1mo","1d"))
     try:
-        raw = yf.download(ticker, period=period, interval=interval, progress=False)
+        raw = yf.download(ticker, period=period, interval=interval, progress=False, timeout=10)
+        if raw is None or raw.empty: return pd.DataFrame()
         return _extract_ohlcv(raw)
-    except:
+    except Exception:
         return pd.DataFrame()
 
 def get_price_stats(df):
@@ -111,28 +115,33 @@ def get_price_stats(df):
 
 
 # ── 가격 히스토리 ─────────────────────────────────────────────────────────────
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=600)
 def get_price_history(ticker, period="60d"):
     try:
-        raw  = yf.download(ticker, period=period, interval="1d", progress=False)
+        raw  = yf.download(ticker, period=period, interval="1d", progress=False, timeout=10)
+        if raw is None or raw.empty: return pd.DataFrame()
         data = _extract_close(raw).dropna()
         df   = data.reset_index()
         df.columns = ["Date","Close"]
         return df
-    except:
+    except Exception:
         return pd.DataFrame()
 
 
 # ── 섹터 분석 ─────────────────────────────────────────────────────────────────
 @st.cache_data(ttl=300)
 def get_sector_analysis(ticker):
-    sk  = detect_sector(ticker)
-    cfg = SECTOR_CONFIG[sk]
-    results = []
-    for ind in cfg["indicators"]:
-        z, price = get_z_and_price(ind["ticker"])
-        results.append({**ind, "z": z, "price": price})
-    return sk, cfg, results
+    try:
+        sk  = detect_sector(ticker)
+        cfg = SECTOR_CONFIG[sk]
+        results = []
+        for ind in cfg["indicators"]:
+            z, price = get_z_and_price(ind["ticker"])
+            results.append({**ind, "z": z, "price": price})
+        return sk, cfg, results
+    except Exception:
+        cfg = SECTOR_CONFIG["Unknown"]
+        return "Unknown", cfg, [{**ind, "z": 0.0, "price": 0.0} for ind in cfg["indicators"]]
 
 
 # ── 상관계수 계산 ─────────────────────────────────────────────────────────────
