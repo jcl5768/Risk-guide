@@ -804,7 +804,7 @@ def render_detail_page():
 
             with st.spinner("Lv.3 계산 중..."):
                 var_95  = calc_var(target, confidence=0.95)
-                mc_data = calc_monte_carlo(target, days=20, simulations=500)
+                mc_data = calc_monte_carlo(target, simulations=500)
 
             # VaR
             if var_95 is not None:
@@ -820,29 +820,57 @@ def render_detail_page():
                     unsafe_allow_html=True
                 )
 
-            # 몬테카를로
-            if mc_data:
-                up_clr = "#059669" if mc_data["prob_up"] >= 50 else "#DC2626"
-                mc_cards = ""
-                for lbl, val, c in [
-                    ("비관 (10%)", mc_data["p10"], "#DC2626"),
-                    ("중립 (50%)", mc_data["p50"], "#D97706"),
-                    ("낙관 (90%)", mc_data["p90"], "#059669"),
-                ]:
-                    mc_cards += (
-                        f'<div style="flex:1;min-width:70px;text-align:center;background:#F9FAFB;'
-                        f'border-radius:8px;padding:8px;">'
-                        f'<div style="font-size:9px;color:#9CA3AF;">{lbl}</div>'
-                        f'<div style="font-size:14px;font-weight:700;color:{c};">${val:.0f}</div></div>'
-                    )
+            # 몬테카를로 — 기간별 표
+            if mc_data and mc_data.get("periods"):
+                periods = mc_data["periods"]
+
+                # 헤더
                 st.markdown(
                     f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
                     f'padding:14px 16px;margin-bottom:10px;">'
-                    f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:8px;">'
-                    f'🎲 몬테카를로 시뮬레이션 (500회 · {mc_data["days"]}일 후)</div>'
-                    f'<div style="display:flex;gap:10px;flex-wrap:wrap;">{mc_cards}</div>'
-                    f'<div style="margin-top:10px;font-size:12px;color:{up_clr};font-weight:600;">'
-                    f'상승 확률: {mc_data["prob_up"]:.0f}%</div>'
+                    f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:10px;">'
+                    f'🎲 몬테카를로 시뮬레이션 (500회 · 현재가 ${mc_data["current"]:.2f})</div>',
+                    unsafe_allow_html=True
+                )
+
+                # 기간별 행
+                period_rows = (
+                    f'<table style="width:100%;border-collapse:collapse;font-size:11px;">'
+                    f'<thead><tr>'
+                    f'<th style="padding:6px 8px;text-align:left;color:#9CA3AF;font-weight:600;'
+                    f'border-bottom:1px solid #E8EAED;">기간</th>'
+                    f'<th style="padding:6px 8px;text-align:center;color:#DC2626;font-weight:600;'
+                    f'border-bottom:1px solid #E8EAED;">최대손실<br>(95%)</th>'
+                    f'<th style="padding:6px 8px;text-align:center;color:#D97706;font-weight:600;'
+                    f'border-bottom:1px solid #E8EAED;">중립<br>(50%)</th>'
+                    f'<th style="padding:6px 8px;text-align:center;color:#059669;font-weight:600;'
+                    f'border-bottom:1px solid #E8EAED;">최대수익<br>(95%)</th>'
+                    f'<th style="padding:6px 8px;text-align:center;color:#6B7280;font-weight:600;'
+                    f'border-bottom:1px solid #E8EAED;">상승<br>확률</th>'
+                    f'</tr></thead><tbody>'
+                )
+                for lbl in ["1달", "6개월", "1년", "5년"]:
+                    p = periods[lbl]
+                    up_c = "#059669" if p["prob_up"] >= 50 else "#DC2626"
+                    period_rows += (
+                        f'<tr style="border-bottom:1px solid #F3F4F6;">'
+                        f'<td style="padding:8px 8px;font-weight:600;color:#1A1D23;">{lbl}</td>'
+                        f'<td style="padding:8px 8px;text-align:center;color:#DC2626;font-weight:700;'
+                        f'font-family:JetBrains Mono,monospace;">{p["loss_p95"]:+.1f}%</td>'
+                        f'<td style="padding:8px 8px;text-align:center;color:#D97706;font-weight:700;'
+                        f'font-family:JetBrains Mono,monospace;">{p["ret_p50"]:+.1f}%</td>'
+                        f'<td style="padding:8px 8px;text-align:center;color:#059669;font-weight:700;'
+                        f'font-family:JetBrains Mono,monospace;">{p["gain_p95"]:+.1f}%</td>'
+                        f'<td style="padding:8px 8px;text-align:center;color:{up_c};font-weight:700;">'
+                        f'{p["prob_up"]:.0f}%</td>'
+                        f'</tr>'
+                    )
+                period_rows += '</tbody></table>'
+
+                st.markdown(
+                    period_rows +
+                    f'<div style="font-size:10px;color:#B0B7C3;margin-top:8px;">'
+                    f'최대손실·최대수익은 95% 신뢰구간 기준 · 과거 변동성 기반 참고치</div>'
                     f'</div>',
                     unsafe_allow_html=True
                 )
