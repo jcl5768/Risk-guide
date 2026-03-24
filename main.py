@@ -1,5 +1,4 @@
-# main.py
-import streamlit as st
+import json
 from config import SECTOR_CONFIG, ETF_MAP
 from engine import detect_sector, get_z_and_price, search_tickers, TICKER_NAME_MAP
 from pages import apply_custom_style, render_main_page, render_detail_page
@@ -249,6 +248,50 @@ with st.sidebar:
 
     st.markdown("---")
     with st.expander("⚙️ 설정"):
+        # ── 포트폴리오 내보내기 ──────────────────────────────────────
+        if st.session_state.portfolio:
+            portfolio_json = json.dumps(
+                st.session_state.portfolio, ensure_ascii=False, indent=2
+            )
+            st.download_button(
+                label="💾 포트폴리오 저장",
+                data=portfolio_json,
+                file_name="portfolio.json",
+                mime="application/json",
+                use_container_width=True,
+            )
+        else:
+            st.markdown(
+                '<div style="font-size:11px;color:#9CA3AF;text-align:center;'
+                'padding:6px 0;">종목 추가 후 저장 가능합니다</div>',
+                unsafe_allow_html=True
+            )
+
+        # ── 포트폴리오 불러오기 ──────────────────────────────────────
+        uploaded = st.file_uploader(
+            "📂 포트폴리오 불러오기",
+            type=["json"],
+            key="portfolio_upload",
+            label_visibility="collapsed"
+        )
+        if uploaded is not None:
+            try:
+                loaded = json.loads(uploaded.read().decode("utf-8"))
+                if isinstance(loaded, list) and len(loaded) > 0:
+                    st.session_state.portfolio = loaded
+                    st.session_state.editing   = None
+                    st.success(f"✅ {len(loaded)}개 종목 불러오기 완료!")
+                    st.rerun()
+                else:
+                    st.error("올바른 포트폴리오 파일이 아닙니다.")
+            except Exception:
+                st.error("파일을 읽을 수 없습니다.")
+
+        st.markdown('<div style="font-size:10px;color:#D1D5DB;margin-top:4px;">'
+                    '📂 버튼으로 저장한 JSON 파일을 불러오세요</div>',
+                    unsafe_allow_html=True)
+
+        st.markdown("---")
         if st.button("🔄 전체 초기화", use_container_width=True):
             st.session_state.portfolio = []
             st.session_state.editing   = None
@@ -256,7 +299,7 @@ with st.sidebar:
         st.markdown(
             '<div style="font-size:11px;color:#9CA3AF;margin-top:8px;line-height:1.6;">'
             '세션 종료 시 포트폴리오가 초기화됩니다.<br>'
-            '(Lv.3 로컬 저장 기능 추가 예정)</div>',
+            '💾 저장 버튼으로 백업해두세요!</div>',
             unsafe_allow_html=True
         )
 
