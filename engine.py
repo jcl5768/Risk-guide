@@ -631,23 +631,51 @@ def corr_color(corr, direction):
 # ══════════════════════════════════════════════════════════════════════════════
 
 @st.cache_data(ttl=300)
-def get_fear_greed(vix_ticker="^VIX"):
+def get_fear_greed():
     """
-    Lv.1 — 공포·탐욕 지수 (0~100)
-    VIX 기반으로 시장 심리를 단순화.
-    VIX 낮을수록 탐욕(100), 높을수록 공포(0).
+    Lv.1 — 복합 공포·탐욕 지수 (0~100)
+    VIX 50% + 나스닥 모멘텀 30% + 달러 강세 20% 가중 합산.
     """
     try:
-        _, vix = get_z_and_price(vix_ticker)
-        if vix <= 0: return 50, "중립", "#D97706"
-        # VIX 10 → 75(탐욕), VIX 20 → 50(중립), VIX 40 → 0(극도공포)
-        score = round(max(5, min(95, 100 - (vix / 40 * 100))), 0)
+        # 1. VIX (공포 지수) — 낮을수록 탐욕
+        _, vix = get_z_and_price("^VIX")
+        vix_score = max(5, min(95, 100 - (vix / 40 * 100))) if vix > 0 else 50
+
+        # 2. 나스닥 모멘텀 — 20일 수익률 기반
+        #    양수(상승 추세) = 탐욕, 음수(하락 추세) = 공포
+        try:
+            raw_qqq = yf.download("QQQ", period="2mo", interval="1d",
+                                  progress=False, timeout=10)
+            closes_qqq = _extract_close(raw_qqq).dropna()
+            if len(closes_qqq) >= 21:
+                mom = float((closes_qqq.iloc[-1] / closes_qqq.iloc[-21] - 1) * 100)
+                # +10% 이상 → 탐욕(90), -10% 이하 → 공포(10)
+                qqq_score = max(5, min(95, 50 + mom * 4))
+            else:
+                qqq_score = 50
+        except Exception:
+            qqq_score = 50
+
+        # 3. 달러 강세 — 달러 강세 = 위험자산 회피 = 공포
+        #    달러 약세 = 위험자산 선호 = 탐욕
+        try:
+            dxy_z, _ = get_z_and_price("DX-Y.NYB")
+            # Z > 0 (달러 강세) → 공포 방향, Z < 0 (달러 약세) → 탐욕 방향
+            dxy_score = max(5, min(95, 50 - dxy_z * 15))
+        except Exception:
+            dxy_score = 50
+
+        # 가중 합산
+        score = round(vix_score * 0.5 + qqq_score * 0.3 + dxy_score * 0.2, 0)
+        score = int(max(5, min(95, score)))
+
         if score >= 75:   label, clr = "탐욕",    "#059669"
         elif score >= 55: label, clr = "낙관",    "#10B981"
         elif score >= 45: label, clr = "중립",    "#D97706"
         elif score >= 25: label, clr = "공포",    "#EF4444"
         else:             label, clr = "극도공포", "#DC2626"
-        return int(score), label, clr
+
+        return score, label, clr
     except Exception:
         return 50, "중립", "#D97706"
 
@@ -709,9 +737,7 @@ def get_portfolio_lv1(portfolio):
 @st.cache_data(ttl=600)
 def calc_var(ticker, confidence=0.95, horizon_days=1):
     """
-    Lv.3 — VaR (Value at Risk)
-    confidence 수준에서 horizon_days 동안 발생 가능한 최대 손실률(%) 반환.
-    예: 95% VaR = -3.2% → "95% 확률로 하루 최대 -3.2% 이상 안 깨짐"
+    Lv.3 — VaR (Value at Risk) 개별 종목
     """
     try:
         raw    = yf.download(ticker, period="1y", interval="1d", progress=False, timeout=10)
@@ -724,8 +750,80 @@ def calc_var(ticker, confidence=0.95, horizon_days=1):
         return None
 
 
+def calc_portfolio_var(portfolio, confidence=0.95):
+    """
+    Lv.3 — 포트폴리오 전체 VaR
+    각 종목의 비중을 반영한 가중 합산 수익률로 VaR 계산.
+    반환: {
+        "var_1d":  1일 VaR (%),
+        "var_5d":  5일 VaR (%),
+        "amount_1d": 1일 예상 최대 손실액 (총 평가금액 기준),
+        "total_value": 총 평가금액 ($),
+    }
+    """
+    try:
+        if not portfolio:
+            return None
+
+        # 각 종목 수익률 시계열 수집
+        returns_list = []
+        weights_list = []
+        total_value  = 0.0
+
+        for stock in portfolio:
+            try:
+                raw    = yf.download(stock["ticker"], period="1y", interval="1d",
+                                     progress=False, timeout=10)
+                closes = _extract_close(raw).dropna()
+                if len(closes) < 30:
+                    continue
+                ret = closes.pct_change().dropna()
+                returns_list.append(ret)
+
+                # 평가금액 = 현재가 × 수량
+                cur_price = float(closes.iloc[-1])
+                value     = cur_price * stock.get("shares", 0)
+                weights_list.append(value)
+                total_value += value
+            except Exception:
+                continue
+
+        if not returns_list or total_value == 0:
+            return None
+
+        # 공통 날짜 맞추기
+        import pandas as pd
+        df = pd.concat(returns_list, axis=1).dropna()
+        if len(df) < 30:
+            return None
+
+        # 비중 계산
+        w = np.array(weights_list[:df.shape[1]])
+        w = w / w.sum()
+
+        # 포트폴리오 일별 수익률
+        port_ret = df.values @ w
+
+        # VaR 계산
+        var_1d = round(float(np.percentile(port_ret, (1 - confidence) * 100)) * 100, 2)
+        var_5d = round(var_1d * np.sqrt(5), 2)
+
+        # 금액 기준 손실
+        amount_1d = round(total_value * abs(var_1d) / 100, 0)
+
+        return {
+            "var_1d":       var_1d,
+            "var_5d":       var_5d,
+            "amount_1d":    amount_1d,
+            "total_value":  round(total_value, 0),
+            "confidence":   int(confidence * 100),
+        }
+    except Exception:
+        return None
+
+
 @st.cache_data(ttl=600)
-def calc_monte_carlo(ticker, days=30, simulations=500):
+def calc_monte_carlo(ticker, days=30, simulations=1000):
     """
     Lv.3 — 몬테카를로 시뮬레이션
     과거 변동성 기반으로 simulations개의 가상 가격 경로 생성.
