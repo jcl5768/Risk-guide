@@ -41,7 +41,7 @@ section[data-testid="stSidebar"]{background:#FFFFFF;border-right:1px solid #E8EA
 /* 기간 선택 버튼 — 선택된 것 강조 */
 .period-btn-active button{background:#1A1D23 !important;color:#FFFFFF !important;border-color:#1A1D23 !important;font-weight:700 !important;}
 /* 기간 버튼 — 작고 심플, 한 줄 */
-div[data-testid="stButton"][data-key^="p_"] > button{font-size:12px !important;padding:4px 6px !important;height:30px !important;min-height:0 !important;}
+div[data-testid="stButton"][data-key^="p_"] > button{font-size:11px !important;padding:2px 4px !important;height:26px !important;min-height:0 !important;}
 /* Action Plan 테이블 */
 .action-table{width:100%;border-collapse:collapse;font-size:12px;}
 .action-table th{background:#F9FAFB;color:#6B7280;font-weight:600;padding:8px 12px;text-align:left;border-bottom:1px solid #E8EAED;}
@@ -301,7 +301,7 @@ def render_main_page():
         with st.spinner("포트폴리오 리스크 계산 중..."):
             pvar = calc_portfolio_var(portfolio, confidence=0.95)
         if pvar:
-            v1_clr = "#DC2626" if pvar["var_1d"] < -2 else "#D97706" if pvar["var_1d"] < -1 else "#059669"
+            v_clr = "#DC2626" if pvar["var_7d"] < -5 else "#D97706" if pvar["var_7d"] < -3 else "#059669"
             st.markdown(
                 f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
                 f'padding:12px 18px;margin-bottom:16px;">'
@@ -310,19 +310,22 @@ def render_main_page():
                 f'<span style="font-size:12px;font-weight:600;color:#1A1D23;">'
                 f'포트폴리오 전체 리스크 (VaR {pvar["confidence"]}%)</span>'
                 f'</div>'
-                f'<div style="display:flex;gap:12px;flex-wrap:wrap;">'
-                f'<div style="flex:1;min-width:90px;background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">'
-                f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:3px;">1일 최대손실률</div>'
-                f'<div style="font-size:18px;font-weight:700;color:{v1_clr};">{pvar["var_1d"]:+.2f}%</div>'
+                f'<div style="display:flex;gap:10px;flex-wrap:wrap;">'
+                f'<div style="flex:1;min-width:70px;background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">'
+                f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:3px;">7일 최대손실</div>'
+                f'<div style="font-size:16px;font-weight:700;color:{v_clr};">{pvar["var_7d"]:+.2f}%</div>'
                 f'</div>'
-                f'<div style="flex:1;min-width:90px;background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">'
-                f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:3px;">5일 최대손실률</div>'
-                f'<div style="font-size:18px;font-weight:700;color:{v1_clr};">{pvar["var_5d"]:+.2f}%</div>'
+                f'<div style="flex:1;min-width:70px;background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">'
+                f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:3px;">1달 최대손실</div>'
+                f'<div style="font-size:16px;font-weight:700;color:{v_clr};">{pvar["var_1mo"]:+.2f}%</div>'
                 f'</div>'
-                f'<div style="flex:1;min-width:90px;background:#FEF2F2;border-radius:8px;padding:10px;text-align:center;">'
-                f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:3px;">1일 예상손실액</div>'
-                f'<div style="font-size:18px;font-weight:700;color:#DC2626;">'
-                f'${pvar["amount_1d"]:,.0f}</div>'
+                f'<div style="flex:1;min-width:70px;background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">'
+                f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:3px;">1년 최대손실</div>'
+                f'<div style="font-size:16px;font-weight:700;color:{v_clr};">{pvar["var_1y"]:+.2f}%</div>'
+                f'</div>'
+                f'<div style="flex:1;min-width:70px;background:#FEF2F2;border-radius:8px;padding:10px;text-align:center;">'
+                f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:3px;">7일 예상손실액</div>'
+                f'<div style="font-size:16px;font-weight:700;color:#DC2626;">${pvar["amount_7d"]:,.0f}</div>'
                 f'</div>'
                 f'</div>'
                 f'<div style="font-size:10px;color:#B0B7C3;margin-top:8px;">'
@@ -535,14 +538,16 @@ def render_detail_page():
         ai_items += f'<div style="font-size:12px;color:#059669;">▲ {ind["name"]} 긍정적</div>'
     for ind in top_neg_inds[:2]:
         ai_items += f'<div style="font-size:12px;color:#DC2626;">▼ {ind["name"]} 리스크</div>'
-    if ai_items:
-        st.markdown(
-            f'<div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:8px;'
-            f'padding:10px 14px;margin-bottom:12px;">'
-            f'<div style="font-size:10px;font-weight:700;color:#059669;margin-bottom:4px;">AI 요약</div>'
-            f'{ai_items}</div>',
-            unsafe_allow_html=True
-        )
+    if not ai_items:
+        ai_items = '<div style="font-size:12px;color:#9CA3AF;">주요 드라이버 신호 없음</div>'
+    st.markdown(
+        f'<div style="background:#F0FDF4;border:1px solid #A7F3D0;border-radius:8px;'
+        f'padding:10px 14px;margin-bottom:12px;">'
+        f'<div style="font-size:10px;font-weight:700;color:#059669;margin-bottom:4px;">AI 요약</div>'
+        f'{ai_items}'
+        f'</div>',
+        unsafe_allow_html=True
+    )
 
     # ── 탭 ───────────────────────────────────────────────────────────
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -836,7 +841,7 @@ def render_detail_page():
 
             with st.spinner("Lv.3 계산 중..."):
                 var_95  = calc_var(target, confidence=0.95)
-                mc_data = calc_monte_carlo(target, simulations=500)
+                mc_data = calc_monte_carlo(target, simulations=1000)
 
             # VaR
             if var_95 is not None:
