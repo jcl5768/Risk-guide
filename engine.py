@@ -81,10 +81,10 @@ def get_percentile(ticker):
 
 # ── 차트 데이터 ───────────────────────────────────────────────────────────────
 PERIOD_MAP = {
-    "1일": ("5d",  "5m"),
-    "1주": ("5d",  "1h"),
-    "1달": ("1mo", "1d"),
-    "1년": ("1y",  "1d"),
+    "1일": ("3mo", "1d"),   # 1일 버튼 → 약 1달치 일봉
+    "1주": ("6mo", "1wk"),  # 1주 버튼 → 약 2달치 주봉
+    "1달": ("1y",  "1mo"),  # 1달 버튼 → 약 12달치 월봉
+    "1년": ("max", "3mo"),  # 1년 버튼 → 최대 4년+ 분기봉
 }
 
 @st.cache_data(ttl=120)
@@ -805,16 +805,18 @@ def calc_portfolio_var(portfolio, confidence=0.95):
         port_ret = df.values @ w
 
         # VaR 계산
-        var_1d = round(float(np.percentile(port_ret, (1 - confidence) * 100)) * 100, 2)
-        var_5d = round(var_1d * np.sqrt(5), 2)
-
-        # 금액 기준 손실
-        amount_1d = round(total_value * abs(var_1d) / 100, 0)
+        var_1d  = round(float(np.percentile(port_ret, (1 - confidence) * 100)) * 100, 2)
+        var_7d  = round(var_1d * np.sqrt(7),   2)
+        var_1mo = round(var_1d * np.sqrt(21),  2)
+        var_1y  = round(var_1d * np.sqrt(252), 2)
+        amount_7d = round(total_value * abs(var_7d) / 100, 0)
 
         return {
             "var_1d":       var_1d,
-            "var_5d":       var_5d,
-            "amount_1d":    amount_1d,
+            "var_7d":       var_7d,
+            "var_1mo":      var_1mo,
+            "var_1y":       var_1y,
+            "amount_7d":    amount_7d,
             "total_value":  round(total_value, 0),
             "confidence":   int(confidence * 100),
         }
