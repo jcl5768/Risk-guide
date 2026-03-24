@@ -9,7 +9,7 @@ from engine import (
     calc_win_rate, get_weighted_z, run_backtest,
     get_signal, zcolor, zdesc, corr_color,
     get_fear_greed, get_portfolio_lv1,
-    calc_var, calc_monte_carlo, calc_bayesian_update,
+    calc_var, calc_portfolio_var, calc_monte_carlo, calc_bayesian_update,
 )
 
 
@@ -273,12 +273,10 @@ def render_main_page():
             f'<span style="font-size:12px;font-weight:600;color:#1A1D23;">오늘 내 계좌 날씨</span>'
             f'</div>'
             f'<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">'
-            # 날씨 아이콘 + 승률
             f'<div style="text-align:center;min-width:70px;">'
             f'<div style="font-size:36px;line-height:1;">{w_icon}</div>'
             f'<div style="font-size:11px;font-weight:700;color:{w_clr};margin-top:4px;">{w_label}</div>'
             f'</div>'
-            # 포트폴리오 평균 승률 게이지
             f'<div style="flex:1;min-width:140px;">'
             f'<div style="display:flex;justify-content:space-between;font-size:11px;'
             f'color:#6B7280;margin-bottom:4px;">'
@@ -289,7 +287,6 @@ def render_main_page():
             f'transition:width 0.3s;"></div></div>'
             f'<div style="font-size:11px;color:#6B7280;margin-top:6px;">{w_summary}</div>'
             f'</div>'
-            # 공포탐욕 지수
             f'<div style="text-align:center;min-width:60px;">'
             f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:2px;">공포·탐욕</div>'
             f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:20px;'
@@ -299,6 +296,40 @@ def render_main_page():
             f'</div></div>',
             unsafe_allow_html=True
         )
+
+        # ── 포트폴리오 전체 VaR ──────────────────────────────────────
+        with st.spinner("포트폴리오 리스크 계산 중..."):
+            pvar = calc_portfolio_var(portfolio, confidence=0.95)
+        if pvar:
+            v1_clr = "#DC2626" if pvar["var_1d"] < -2 else "#D97706" if pvar["var_1d"] < -1 else "#059669"
+            st.markdown(
+                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
+                f'padding:12px 18px;margin-bottom:16px;">'
+                f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">'
+                f'<span class="lv3">Lv.3</span>'
+                f'<span style="font-size:12px;font-weight:600;color:#1A1D23;">'
+                f'포트폴리오 전체 리스크 (VaR {pvar["confidence"]}%)</span>'
+                f'</div>'
+                f'<div style="display:flex;gap:12px;flex-wrap:wrap;">'
+                f'<div style="flex:1;min-width:90px;background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">'
+                f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:3px;">1일 최대손실률</div>'
+                f'<div style="font-size:18px;font-weight:700;color:{v1_clr};">{pvar["var_1d"]:+.2f}%</div>'
+                f'</div>'
+                f'<div style="flex:1;min-width:90px;background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">'
+                f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:3px;">5일 최대손실률</div>'
+                f'<div style="font-size:18px;font-weight:700;color:{v1_clr};">{pvar["var_5d"]:+.2f}%</div>'
+                f'</div>'
+                f'<div style="flex:1;min-width:90px;background:#FEF2F2;border-radius:8px;padding:10px;text-align:center;">'
+                f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:3px;">1일 예상손실액</div>'
+                f'<div style="font-size:18px;font-weight:700;color:#DC2626;">'
+                f'${pvar["amount_1d"]:,.0f}</div>'
+                f'</div>'
+                f'</div>'
+                f'<div style="font-size:10px;color:#B0B7C3;margin-top:8px;">'
+                f'총 평가금액 ${pvar["total_value"]:,.0f} 기준 · 과거 1년 수익률 기반 참고치</div>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
 
     if not portfolio:
         st.markdown(
