@@ -1,6 +1,7 @@
 # pages.py
 import streamlit as st
 import plotly.graph_objects as go
+import plotly
 from config import SECTOR_CONFIG, MACRO_INDICATORS, SENSITIVITY_COLOR, SENSITIVITY_LABEL
 from engine import (
     detect_sector, get_z_and_price, get_sector_analysis,
