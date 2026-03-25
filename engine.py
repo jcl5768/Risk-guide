@@ -300,9 +300,9 @@ def _news_decay(raw_score, pub_date_str, title=""):
 
 
 def _percentile_score(ticker):
-    """Percentile → 승률 보정 (-12 ~ +12점)"""
+    """Percentile → 승률 보정 (-15 ~ +15점, 기존 ±12보다 가격위치 영향력 확대)"""
     pct   = get_percentile(ticker)
-    score = round((50 - pct) / 50 * 12, 1)
+    score = round((50 - pct) / 50 * 15, 1)
     return score, pct
 
 
@@ -328,13 +328,13 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
         macro_z = get_weighted_z(indicators)
     macro_score = round(max(-20.0, min(20.0, macro_z * 15)), 1)
 
-    # 3. 뉴스 (시간 감쇠)
+    # 3. 뉴스 (시간 감쇠) — 건당 ±5점으로 확대 (기존 2.5점은 영향력 너무 작음)
     if news_items:
         news_adj = round(sum(
             _news_decay(
-                2.5 if n["sentiment"]=="Positive" else -2.5 if n["sentiment"]=="Negative" else 0.0,
+                5.0 if n["sentiment"]=="Positive" else -5.0 if n["sentiment"]=="Negative" else 0.0,
                 n.get("pub_date_raw",""),
-                n.get("title","")        # ← 지속성 분류에 사용
+                n.get("title","")
             ) for n in news_items
         ), 1)
     else:
