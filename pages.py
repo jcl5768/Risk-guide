@@ -1353,3 +1353,87 @@ def render_detail_page():
                 unsafe_allow_html=True
             )
 
+        # ── 수치 검증 리포트 ─────────────────────────────────────────
+        st.markdown(
+            '<div style="font-size:12px;font-weight:700;color:#1A1D23;'
+            'margin:20px 0 8px;padding-bottom:4px;border-bottom:2px solid #1A1D23;">'
+            '🔬 승률 수치 검증 리포트</div>',
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            '<div style="font-size:11px;color:#6B7280;margin-bottom:10px;">'
+            '현재 승률이 어떤 항목에서 얼마나 나왔는지 실시간으로 검증합니다.</div>',
+            unsafe_allow_html=True
+        )
+
+        # 항목별 기여도 분해
+        pos_s  = breakdown.get("position_score", 0)
+        mac_s  = breakdown.get("macro_score", 0)
+        news_s = breakdown.get("news_bonus", 0)
+        pct_v  = breakdown.get("percentile", 50)
+        mac_z  = breakdown.get("macro_z", 0)
+        total_raw = breakdown.get("total_raw", 50)
+
+        # 각 항목 신뢰도 판단
+        def score_badge(score, item):
+            if item == "position":
+                if abs(score) > 10: return "강한 신호", "#059669" if score > 0 else "#DC2626"
+                elif abs(score) > 5: return "보통 신호", "#D97706"
+                else: return "약한 신호", "#9CA3AF"
+            elif item == "macro":
+                if abs(score) > 12: return "강한 신호", "#059669" if score > 0 else "#DC2626"
+                elif abs(score) > 6: return "보통 신호", "#D97706"
+                else: return "약한 신호", "#9CA3AF"
+            else:
+                if abs(score) > 5: return "강한 신호", "#059669" if score > 0 else "#DC2626"
+                elif abs(score) > 2: return "보통 신호", "#D97706"
+                else: return "약한 신호", "#9CA3AF"
+
+        p_badge, p_clr = score_badge(pos_s, "position")
+        m_badge, m_clr = score_badge(mac_s, "macro")
+        n_badge, n_clr = score_badge(news_s, "news")
+
+        verify_rows = ""
+        for lbl, base, score, badge, clr, desc in [
+            ("📍 가격위치",  50, pos_s,  p_badge, p_clr,
+             f"1년 중 {pct_v:.0f}%ile — {'저점권 (유리)' if pct_v < 30 else '고점권 (불리)' if pct_v > 70 else '중간권'}"),
+            ("📡 거시환경",  0,  mac_s,  m_badge, m_clr,
+             f"가중Z {mac_z:+.3f}σ → {'호재 우세' if mac_z > 0.2 else '악재 우세' if mac_z < -0.2 else '중립'}"),
+            ("📰 뉴스보정",  0,  news_s, n_badge, n_clr,
+             f"감쇠 적용 후 {news_s:+.1f}점 — {'긍정 우세' if news_s > 0 else '부정 우세' if news_s < 0 else '중립'}"),
+        ]:
+            bar_w = min(100, abs(score) / 20 * 100)
+            bar_clr = "#059669" if score >= 0 else "#DC2626"
+            verify_rows += (
+                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;'
+                f'padding:10px 14px;margin-bottom:8px;">'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">'
+                f'<span style="font-size:12px;font-weight:600;color:#1A1D23;">{lbl}</span>'
+                f'<div style="display:flex;align-items:center;gap:8px;">'
+                f'<span style="font-size:10px;color:{clr};font-weight:600;">{badge}</span>'
+                f'<span style="font-family:JetBrains Mono,monospace;font-size:14px;font-weight:700;color:{bar_clr};">'
+                f'{score:+.1f}점</span></div></div>'
+                f'<div style="height:4px;background:#F3F4F6;border-radius:2px;margin-bottom:5px;">'
+                f'<div style="height:100%;width:{bar_w}%;background:{bar_clr};border-radius:2px;"></div></div>'
+                f'<div style="font-size:11px;color:#6B7280;">{desc}</div>'
+                f'</div>'
+            )
+
+        # 최종 합산 검증
+        clamp_yn = "⚠ clamp 적용됨" if total_raw != fw else "✓ 정상 범위"
+        clamp_clr = "#D97706" if total_raw != fw else "#059669"
+
+        st.markdown(
+            verify_rows +
+            f'<div style="background:#F9FAFB;border:1px solid #E8EAED;border-radius:8px;'
+            f'padding:10px 14px;">'
+            f'<div style="font-size:11px;color:#6B7280;margin-bottom:4px;">합산 검증</div>'
+            f'<div style="font-size:12px;color:#374151;">'
+            f'50(기본) {pos_s:+.1f}(가격) {mac_s:+.1f}(거시) {news_s:+.1f}(뉴스) '
+            f'= <b style="color:#1A1D23;">{total_raw:.1f}점</b> → '
+            f'<b style="color:{sv_};">{fw:.1f}%</b> '
+            f'<span style="font-size:10px;color:{clamp_clr};">{clamp_yn}</span></div>'
+            f'</div>',
+            unsafe_allow_html=True
+        )
+
