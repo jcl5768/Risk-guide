@@ -371,12 +371,33 @@ def render_main_page():
                 st_, sc_, sv_ = get_signal(win)
                 pnl = ((price - stock["avg_price"]) / stock["avg_price"] * 100) \
                       if price and stock["avg_price"] > 0 else None
-                pnl_text = f"{'+'if pnl>=0 else ''}{pnl:.1f}%" if pnl is not None else "미입력"
+                pnl_text = f"{'+'if pnl>=0 else ''}{pnl:.1f}%" if pnl is not None else "—"
                 pc   = "#059669" if (pnl or 0) >= 0 else "#DC2626"
                 ti   = max(inds, key=lambda x: abs(x["z"] * x["driver_weight"]))
                 tc   = ti["z"] * ti["direction"]
                 tclr = "#059669" if tc > 0 else "#DC2626"
                 weighted_z = get_weighted_z(inds)
+
+                # 평가손익 금액
+                shares    = stock.get("shares", 0)
+                eval_val  = price * shares if price and shares else 0
+                cost_val  = stock["avg_price"] * shares if shares else 0
+                pnl_amt   = eval_val - cost_val
+                pnl_amt_str = f"{'+'if pnl_amt>=0 else ''}${pnl_amt:,.0f}" if shares > 0 else "—"
+                pnl_amt_clr = "#059669" if pnl_amt >= 0 else "#DC2626"
+
+                # 비중 경고
+                weight_warn = ""
+                if win < 45 and stock["weight"] > 20:
+                    weight_warn = f'<div style="font-size:10px;color:#DC2626;margin-top:3px;">⚠ 승률 낮은데 비중 {stock["weight"]:.0f}% — 축소 고려</div>'
+                elif win < 45 and stock["weight"] > 10:
+                    weight_warn = f'<div style="font-size:10px;color:#D97706;margin-top:3px;">⚠ 승률 낮음 — 비중 주의</div>'
+
+                # 직관적 거시환경 표현
+                if weighted_z > 0.3:    macro_txt = "📈 시장 환경 유리"
+                elif weighted_z < -0.3: macro_txt = "📉 시장 환경 불리"
+                else:                   macro_txt = "➡ 시장 환경 중립"
+                macro_clr = "#059669" if weighted_z > 0.3 else "#DC2626" if weighted_z < -0.3 else "#6B7280"
 
                 st.markdown(f"""
 <div class="stock-card" style="border-top:3px solid {sv_};">
@@ -386,22 +407,21 @@ def render_main_page():
         <div style="font-size:10px;color:#9CA3AF;">{stock['name']}</div></div>
         <div class="{sc_}">{st_}</div>
     </div>
-    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:2px;">
+    <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:4px;">
         <span style="font-family:'JetBrains Mono',monospace;font-size:30px;font-weight:700;
                      color:{sv_};line-height:1;">{win}%</span>
-        <span style="font-size:10px;color:#9CA3AF;" title="{breakdown['explain']}">승률 ❔</span>
+        <span style="font-size:10px;color:#9CA3AF;">상승 가능성</span>
     </div>
-    <div style="font-size:10px;color:#9CA3AF;margin-bottom:4px;">
-        거시Z <span style="color:{zcolor(weighted_z)};font-weight:600;">{weighted_z:+.2f}</span>
+    <div style="font-size:10px;color:{macro_clr};margin-bottom:4px;">{macro_txt}</div>
+    <div style="font-size:10px;color:{tclr};margin-bottom:6px;">
+        {'▲' if tc>0 else '▼'} {ti['name']} 주요 변수
     </div>
-    <div style="font-size:10px;color:{tclr};margin-bottom:8px;">
-        {'▲' if tc>0 else '▼'} {ti['name']} 핵심 드라이버
-    </div>
+    {weight_warn}
     <div style="display:flex;justify-content:space-between;font-size:11px;
-                padding-top:8px;border-top:1px solid #F3F4F6;">
+                padding-top:8px;border-top:1px solid #F3F4F6;margin-top:4px;">
         <span style="color:#6B7280;">${price:.1f}</span>
         <span style="color:{pc};font-weight:500;">{pnl_text}</span>
-        <span style="color:#9CA3AF;">{stock['weight']:.1f}%</span>
+        <span style="color:{pnl_amt_clr};font-weight:600;">{pnl_amt_str}</span>
     </div>
 </div>""", unsafe_allow_html=True)
                 st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
@@ -482,7 +502,26 @@ def render_detail_page():
     interp_bg, interp_border, interp_icon, interp_title, interp_body, interp_clr = \
         _win_rate_interpretation(fw, inds, zs, weighted_z)
 
-    # ── 헤더 — 앱스타일 ──────────────────────────────────────────────
+    # 상세 헤더에 필요한 직관적 표현 계산
+    # 가격 위치
+    pct_val = breakdown.get("percentile", 50)
+    if pct_val <= 20:   price_pos = "1년 저점 근처 🟢"
+    elif pct_val <= 40: price_pos = "비교적 저렴한 구간"
+    elif pct_val <= 60: price_pos = "중간 가격대"
+    elif pct_val <= 80: price_pos = "비교적 비싼 구간"
+    else:               price_pos = "1년 고점 근처 🔴"
+
+    # 평가손익
+    shares   = si.get("shares", 0)
+    eval_val = price * shares if price and shares else 0
+    cost_val = si["avg_price"] * shares if shares else 0
+    pnl_amt  = eval_val - cost_val
+    pnl_amt_str = f"({'+'if pnl_amt>=0 else ''}${pnl_amt:,.0f})" if shares > 0 else ""
+    pnl_amt_clr = "#059669" if pnl_amt >= 0 else "#DC2626"
+
+    # 손익분기점
+    bep_pct = ((si["avg_price"] - price) / price * 100) if price and si["avg_price"] > 0 and price < si["avg_price"] else 0
+    bep_txt = f"본전까지 +{bep_pct:.1f}% 필요" if bep_pct > 0 else ""
     # 상단: 종목명 + 섹터 + 신호 배지
     st.markdown(
         f'<div style="background:#FFFFFF;border-bottom:1px solid #E8EAED;'
@@ -505,24 +544,23 @@ def render_detail_page():
         f'<div style="background:#FFFFFF;padding:14px 4px 10px;'
         f'border-bottom:3px solid {sv_};margin-bottom:12px;">'
         f'<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
-        # 왼쪽: 승률
         f'<div>'
-        f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:2px;">오늘의 승률</div>'
+        f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:2px;">상승 가능성</div>'
         f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:44px;'
         f'font-weight:700;color:{sv_};line-height:1;">{fw:.1f}%</div>'
         f'<div style="font-size:11px;color:#6B7280;margin-top:4px;">'
-        f'뉴스 보정 {nb:+.1f}% · 수익률 '
+        f'{price_pos} · 수익률 '
         f'<span style="color:{pc};font-weight:600;">{("+" if pnl>=0 else "")}{pnl:.1f}%</span>'
         f'</div>'
         f'</div>'
-        # 오른쪽: 현재가 + Z
         f'<div style="text-align:right;">'
         f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:22px;'
         f'font-weight:700;color:#1A1D23;">${price:.2f}</div>'
-        f'<div style="font-size:13px;font-weight:600;color:{zcolor(zs)};margin-top:2px;">'
-        f'Z {zs:+.2f}σ</div>'
+        f'<div style="font-size:11px;color:{pnl_amt_clr};font-weight:600;margin-top:2px;">'
+        f'{pnl_amt_str}</div>'
         f'<div style="font-size:11px;color:#9CA3AF;margin-top:2px;">'
         f'{si.get("shares",0)}주 · 평균 ${si["avg_price"]:.2f}</div>'
+        f'{"<div style=&quot;font-size:10px;color:#D97706;margin-top:2px;&quot;>" + bep_txt + "</div>" if bep_txt else ""}'
         f'</div>'
         f'</div></div>',
         unsafe_allow_html=True
@@ -1352,6 +1390,53 @@ def render_detail_page():
                 '샤프지수 0.5 이상이면 신호 품질이 어느 정도 검증된 수준입니다.</div>',
                 unsafe_allow_html=True
             )
+
+            # ── 캘리브레이션 검증 ────────────────────────────────────
+            st.markdown(
+                '<div style="font-size:12px;font-weight:700;color:#1A1D23;'
+                'margin:16px 0 8px;padding-bottom:4px;border-bottom:2px solid #E8EAED;">'
+                '📐 승률 신뢰도 검증</div>',
+                unsafe_allow_html=True
+            )
+            # 백테스트 결과로 구간별 캘리브레이션
+            if bt:
+                calib_rows = ""
+                for sig_label, acc, avg_ret, count in [
+                    ("매수 신호 (60%↑)", bt["buy_acc"],  bt["avg_ret_buy"],  bt["buy_count"]),
+                    ("리스크 신호 (45%↓)", bt["risk_acc"], bt["avg_ret_risk"], bt["risk_count"]),
+                ]:
+                    if count == 0:
+                        continue
+                    acc_clr  = "#059669" if acc >= 60 else "#D97706" if acc >= 45 else "#DC2626"
+                    ret_clr  = "#059669" if avg_ret >= 0 else "#DC2626"
+                    # 신뢰도 판정
+                    if acc >= 60:   trust = "✅ 신뢰 가능"
+                    elif acc >= 50: trust = "🟡 보통"
+                    else:           trust = "❌ 신뢰도 낮음"
+
+                    calib_rows += (
+                        f'<div style="background:#FFFFFF;border:1px solid #E8EAED;'
+                        f'border-radius:8px;padding:10px 14px;margin-bottom:8px;">'
+                        f'<div style="display:flex;justify-content:space-between;align-items:center;">'
+                        f'<div>'
+                        f'<div style="font-size:12px;font-weight:600;color:#1A1D23;">{sig_label}</div>'
+                        f'<div style="font-size:11px;color:#6B7280;margin-top:2px;">'
+                        f'총 {count}회 신호 · 평균수익 '
+                        f'<span style="color:{ret_clr};font-weight:600;">{avg_ret:+.1f}%</span></div>'
+                        f'</div>'
+                        f'<div style="text-align:right;">'
+                        f'<div style="font-size:18px;font-weight:700;color:{acc_clr};">{acc:.0f}%</div>'
+                        f'<div style="font-size:10px;color:{acc_clr};">{trust}</div>'
+                        f'</div></div>'
+                        f'</div>'
+                    )
+                if calib_rows:
+                    st.markdown(calib_rows, unsafe_allow_html=True)
+                st.markdown(
+                    '<div style="font-size:10px;color:#B0B7C3;margin-top:4px;">'
+                    '적중률이 60% 이상이면 이 종목에서 신호가 통계적으로 유효합니다.</div>',
+                    unsafe_allow_html=True
+                )
 
         # ── 수치 검증 리포트 ─────────────────────────────────────────
         st.markdown(
