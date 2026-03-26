@@ -416,7 +416,6 @@ def render_main_page():
     <div style="font-size:10px;color:{tclr};margin-bottom:6px;">
         {'▲' if tc>0 else '▼'} {ti['name']} 주요 변수
     </div>
-    {weight_warn}
     <div style="display:flex;justify-content:space-between;font-size:11px;
                 padding-top:8px;border-top:1px solid #F3F4F6;margin-top:4px;">
         <span style="color:#6B7280;">${price:.1f}</span>
@@ -424,6 +423,8 @@ def render_main_page():
         <span style="color:{pnl_amt_clr};font-weight:600;">{pnl_amt_str}</span>
     </div>
 </div>""", unsafe_allow_html=True)
+                if weight_warn:
+                    st.markdown(weight_warn, unsafe_allow_html=True)
                 st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
                 if st.button("상세 분석 →", key=f"go_{stock['ticker']}_{rs}"):
                     st.session_state.selected = stock["ticker"]
@@ -560,11 +561,15 @@ def render_detail_page():
         f'{pnl_amt_str}</div>'
         f'<div style="font-size:11px;color:#9CA3AF;margin-top:2px;">'
         f'{si.get("shares",0)}주 · 평균 ${si["avg_price"]:.2f}</div>'
-        f'{"<div style=&quot;font-size:10px;color:#D97706;margin-top:2px;&quot;>" + bep_txt + "</div>" if bep_txt else ""}'
         f'</div>'
         f'</div></div>',
         unsafe_allow_html=True
     )
+    if bep_txt:
+        st.markdown(
+            f'<div style="font-size:10px;color:#D97706;padding:0 4px 8px;">{bep_txt}</div>',
+            unsafe_allow_html=True
+        )
 
     # AI 요약 한 줄 (핵심 드라이버 기반)
     top_pos_inds = sorted([i for i in inds if i["z"]*i["direction"]>0.3],
