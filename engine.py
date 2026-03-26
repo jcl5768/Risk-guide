@@ -300,13 +300,37 @@ def _news_decay(raw_score, pub_date_str, title=""):
 
 
 def _percentile_score(ticker):
-    """Percentile → 승률 보정 (-15 ~ +15점, 기존 ±12보다 가격위치 영향력 확대)"""
+    """Percentile → 승률 보정 (-15 ~ +15점)"""
     pct   = get_percentile(ticker)
     score = round((50 - pct) / 50 * 15, 1)
     return score, pct
 
 
-# ── 핵심 승률 계산 (전면 개선) ────────────────────────────────────────────────
+@st.cache_data(ttl=300)
+def _get_market_regime():
+    """
+    시장 국면 분류 (겉으로 표시 안 함 — 승률 보정에만 사용)
+    SPY 20일 모멘텀 + VIX 수준으로 3가지 국면 판단.
+    하락장 패널티(-5)를 상승장 보너스(+3)보다 크게 설정 → FN(위험 과소평가) 방지.
+    """
+    try:
+        raw_spy = yf.download("SPY", period="2mo", interval="1d", progress=False, timeout=10)
+        spy = _extract_close(raw_spy).dropna()
+        if len(spy) < 21: return 0, 0.0
+        mom_20 = float((spy.iloc[-1] / spy.iloc[-21] - 1) * 100)
+
+        raw_vix = yf.download("^VIX", period="5d", interval="1d", progress=False, timeout=10)
+        vix_ser = _extract_close(raw_vix).dropna()
+        vix = float(vix_ser.iloc[-1]) if not vix_ser.empty else 20.0
+
+        if mom_20 > 3 and vix < 20:   return +1, +3.0   # 상승장
+        elif mom_20 < -3 or vix > 28: return -1, -5.0   # 하락장 (FN 방지)
+        else:                          return  0,  0.0   # 중립
+    except Exception:
+        return 0, 0.0
+
+
+# ── 핵심 승률 계산 ────────────────────────────────────────────────────────────
 def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items=None):
     # 1. 주가 위치 (Percentile)
     if stock_ticker:
@@ -320,7 +344,7 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
         try:
             dyn_w   = _get_dynamic_weights(stock_ticker, indicators)
             macro_z = get_weighted_z(indicators, dyn_w)
-        except:
+        except Exception:
             dyn_w   = None
             macro_z = get_weighted_z(indicators)
     else:
@@ -328,7 +352,7 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
         macro_z = get_weighted_z(indicators)
     macro_score = round(max(-20.0, min(20.0, macro_z * 15)), 1)
 
-    # 3. 뉴스 (시간 감쇠) — 건당 ±5점으로 확대 (기존 2.5점은 영향력 너무 작음)
+    # 3. 뉴스 (시간 감쇠)
     if news_items:
         news_adj = round(sum(
             _news_decay(
@@ -340,8 +364,13 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
     else:
         news_adj = round(news_bonus * 0.5, 1)
 
-    # 4. 합산
-    total = 50.0 + position_score + macro_score + news_adj
+    # 4. 시장 국면 보정 (조용히 — 겉으로 표시 안 함)
+    #    하락장에서 FN(위험 과소평가) 방지 목적
+    _, regime_adj = _get_market_regime()
+    regime_adj = round(regime_adj, 1)
+
+    # 5. 합산
+    total = 50.0 + position_score + macro_score + news_adj + regime_adj
     final = round(max(5.0, min(95.0, total)), 1)
 
     return final, {
@@ -352,15 +381,17 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
         "macro_z":         macro_z,
         "news_bonus":      news_adj,
         "news_raw":        news_bonus,
+        "regime_adj":      regime_adj,
         "total_raw":       round(total, 1),
         "final":           final,
         "dynamic_weights": dyn_w,
-        "z_penalty":       position_score,   # 기존 호환
+        "z_penalty":       position_score,
         "explain": (
             f"기본(50) {'+' if position_score>=0 else ''}{position_score}"
             f"(가격{percentile:.0f}%ile) "
-            f"{'+' if macro_score>=0 else ''}{macro_score}(거시Z동적) "
-            f"{'+' if news_adj>=0 else ''}{news_adj}(뉴스감쇠) = {final}%"
+            f"{'+' if macro_score>=0 else ''}{macro_score}(거시Z) "
+            f"{'+' if news_adj>=0 else ''}{news_adj}(뉴스) "
+            f"{'+' if regime_adj>=0 else ''}{regime_adj}(국면) = {final}%"
         ),
     }
 
