@@ -250,6 +250,83 @@ ETF_MAP = {
     # 지수/범용
     "QQQ":"Technology","SPY":"Unknown","IWM":"Unknown","DIA":"Unknown",
     "VOO":"Unknown","VTI":"Unknown",
+
+    # ── 양자컴퓨팅
+    "IONQ":"Technology","RGTI":"Technology","QUBT":"Technology",
+    "QBTS":"Technology","QTUM":"Technology",
+
+    # ── AI 인프라 / 데이터센터
+    "VRT":"Industrials",     # Vertiv Holdings
+    "SMCI":"Semiconductor",  # Super Micro Computer
+    "DELL":"Technology",     # Dell Technologies
+    "HPE":"Technology",      # Hewlett Packard Enterprise
+    "CDNS":"Semiconductor",  # Cadence Design
+    "SNPS":"Semiconductor",  # Synopsys
+    "KEYS":"Technology",     # Keysight
+    "AEHR":"Semiconductor",  # Aehr Test Systems
+    "ONTO":"Semiconductor",  # Onto Innovation
+
+    # ── 우주·방산
+    "RKLB":"Industrials",    # Rocket Lab
+    "SPCE":"Industrials",    # Virgin Galactic
+    "ASTS":"Communication Services", # AST SpaceMobile
+    "LUNR":"Industrials",    # Intuitive Machines
+    "RDW":"Industrials",     # Redwire
+    "KTOS":"Industrials",    # Kratos Defense
+    "JOBY":"Industrials",    # Joby Aviation
+    "ACHR":"Industrials",    # Archer Aviation
+
+    # ── 바이오테크 (소형)
+    "NVAX":"Healthcare",     # Novavax
+    "BNTX":"Healthcare",     # BioNTech
+    "CRSP":"Healthcare",     # CRISPR Therapeutics
+    "BEAM":"Healthcare",     # Beam Therapeutics
+    "EDIT":"Healthcare",     # Editas Medicine
+    "NTLA":"Healthcare",     # Intellia Therapeutics
+    "HIMS":"Healthcare",     # Hims & Hers
+
+    # ── 핀테크·크립토 인프라
+    "HOOD":"Financial Services", # Robinhood
+    "MSTR":"Financial Services", # MicroStrategy
+    "MARA":"Financial Services", # Marathon Digital
+    "RIOT":"Financial Services", # Riot Platforms
+    "CLSK":"Financial Services", # CleanSpark
+    "HUT":"Financial Services",  # Hut 8
+    "SOFI":"Financial Services", # SoFi
+    "AFRM":"Financial Services", # Affirm
+    "UPST":"Financial Services", # Upstart
+
+    # ── 청정에너지·원자력
+    "OKLO":"Utilities",      # Oklo
+    "SMR":"Utilities",       # NuScale Power
+    "BWXT":"Industrials",    # BWX Technologies
+    "CCJ":"Energy",          # Cameco (우라늄)
+    "UEC":"Energy",          # Uranium Energy
+    "UUUU":"Energy",         # Energy Fuels
+    "PLUG":"Utilities",      # Plug Power
+    "FCEL":"Utilities",      # FuelCell Energy
+    "BE":"Utilities",        # Bloom Energy
+
+    # ── 자율주행·로보틱스
+    "LAZR":"Technology",     # Luminar Technologies
+    "MBLY":"Semiconductor",  # Mobileye
+
+    # ── 소형 성장주
+    "CELH":"Consumer Defensive", # Celsius Holdings
+    "DKNG":"Consumer Cyclical",  # DraftKings
+    "OPEN":"Real Estate",        # Opendoor
+    "Z":"Real Estate",           # Zillow
+    "AI":"Technology",           # C3.ai
+    "PATH":"Technology",         # UiPath
+    "S":"Technology",            # SentinelOne
+    "CRWD":"Technology",         # CrowdStrike
+    "ZS":"Technology",           # Zscaler
+    "DDOG":"Technology",         # Datadog
+    "NET":"Technology",          # Cloudflare
+    "MDB":"Technology",          # MongoDB
+    "GTLB":"Technology",         # GitLab
+    "U":"Technology",            # Unity Software
+    "RBLX":"Communication Services", # Roblox
 }
 
 MACRO_INDICATORS = [
