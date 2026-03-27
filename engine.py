@@ -1044,3 +1044,121 @@ def calc_bayesian_update(prior_win, indicators, new_event_direction):
         return round(posterior * 100, 1)
     except Exception:
         return prior_win
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ── 추가 기능 1: 포트폴리오 종목 간 상관계수 행렬 ────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+
+@st.cache_data(ttl=600)
+def get_portfolio_correlation_matrix(tickers_tuple):
+    tickers = list(tickers_tuple)
+    if len(tickers) < 2:
+        return None, []
+    try:
+        returns_map = {}
+        for t in tickers:
+            try:
+                raw = yf.download(t, period="3mo", interval="1d", progress=False, timeout=10)
+                cl  = _extract_close(raw).dropna()
+                if len(cl) >= 20:
+                    returns_map[t] = cl.pct_change().dropna()
+            except Exception:
+                pass
+        if len(returns_map) < 2:
+            return None, []
+        df = pd.concat(returns_map, axis=1).dropna()
+        if len(df) < 15:
+            return None, []
+        corr_matrix = df.corr().round(3)
+        warnings = []
+        cols = corr_matrix.columns.tolist()
+        for i in range(len(cols)):
+            for j in range(i + 1, len(cols)):
+                r = corr_matrix.iloc[i, j]
+                if abs(r) >= 0.75:
+                    warnings.append({"t1": cols[i], "t2": cols[j], "r": round(r, 3),
+                                     "type": "동조" if r > 0 else "역방향"})
+        warnings.sort(key=lambda x: -abs(x["r"]))
+        return corr_matrix, warnings
+    except Exception:
+        return None, []
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ── 추가 기능 2: 포트폴리오 전체 수익률 시뮬레이션 ────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+
+@st.cache_data(ttl=900)
+def simulate_portfolio_history(portfolio_snapshot):
+    try:
+        portfolio = list(portfolio_snapshot)
+        if not portfolio:
+            return None
+        total_w = sum(w for _, w in portfolio)
+        if total_w == 0:
+            return None
+        stock_series = {}
+        for ticker, _ in portfolio:
+            try:
+                raw = yf.download(ticker, period="6mo", interval="1d", progress=False, timeout=10)
+                cl  = _extract_close(raw).dropna()
+                if len(cl) >= 20:
+                    stock_series[ticker] = cl
+            except Exception:
+                pass
+        if not stock_series:
+            return None
+        df_all = pd.concat(stock_series, axis=1).dropna()
+        if len(df_all) < 20:
+            return None
+        valid_tickers = df_all.columns.tolist()
+        weight_map = {}
+        for ticker, weight in portfolio:
+            if ticker in valid_tickers:
+                weight_map[ticker] = weight
+        total_valid_w = sum(weight_map.values())
+        if total_valid_w == 0:
+            return None
+        for t in weight_map:
+            weight_map[t] /= total_valid_w
+        daily_rets = df_all.pct_change().dropna()
+        port_ret = pd.Series(0.0, index=daily_rets.index)
+        for t, w in weight_map.items():
+            port_ret += daily_rets[t] * w
+        cum_ret = (1 + port_ret).cumprod() - 1
+        try:
+            spy_raw = yf.download("SPY", period="6mo", interval="1d", progress=False, timeout=10)
+            spy_cl  = _extract_close(spy_raw).dropna()
+            spy_common = spy_cl.reindex(cum_ret.index).dropna()
+            spy_ret = (spy_common / spy_common.iloc[0] - 1) * 100
+        except Exception:
+            spy_ret = pd.Series(0.0, index=cum_ret.index)
+        port_pct = (cum_ret * 100).round(2)
+        cumulative = (1 + port_ret).cumprod()
+        rolling_max = cumulative.cummax()
+        drawdown = (cumulative - rolling_max) / rolling_max
+        max_drawdown = round(float(drawdown.min() * 100), 2)
+        stock_rets = {}
+        for t in valid_tickers:
+            first = float(df_all[t].iloc[0])
+            last  = float(df_all[t].iloc[-1])
+            if first > 0:
+                stock_rets[t] = round((last / first - 1) * 100, 2)
+        best_stock  = max(stock_rets.items(), key=lambda x: x[1]) if stock_rets else ("—", 0)
+        worst_stock = min(stock_rets.items(), key=lambda x: x[1]) if stock_rets else ("—", 0)
+        dates = [str(d)[:10] for d in port_pct.index.tolist()]
+        spy_aligned = spy_ret.reindex(port_pct.index).fillna(0).round(2).tolist()
+        return {
+            "dates": dates,
+            "portfolio_returns": port_pct.tolist(),
+            "spy_returns": spy_aligned,
+            "final_ret": round(float(port_pct.iloc[-1]), 2),
+            "spy_final_ret": round(float(spy_ret.iloc[-1]) if len(spy_ret) > 0 else 0, 2),
+            "max_drawdown": max_drawdown,
+            "best_stock": best_stock,
+            "worst_stock": worst_stock,
+            "stock_rets": stock_rets,
+        }
+    except Exception:
+        return None
