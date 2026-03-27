@@ -250,17 +250,23 @@ with st.sidebar:
 
     st.markdown("---")
     with st.expander("⚙️ 설정"):
-        # ── 포트폴리오 내보내기 ──────────────────────────────────────
+        # ── 포트폴리오 저장 (인라인 방식) ───────────────────────────────
         if st.session_state.portfolio:
             portfolio_json = json.dumps(
                 st.session_state.portfolio, ensure_ascii=False, indent=2
             )
-            st.download_button(
-                label="💾 포트폴리오 저장",
-                data=portfolio_json,
-                file_name="portfolio.json",
-                mime="application/json",
-                use_container_width=True,
+            st.markdown(
+                '<div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">💾 포트폴리오 저장</div>'
+                '<div style="font-size:11px;color:#6B7280;margin-bottom:6px;">아래 텍스트를 전체 복사해서 메모장에 저장하세요</div>',
+                unsafe_allow_html=True
+            )
+            st.text_area(
+                "저장 데이터",
+                value=portfolio_json,
+                height=120,
+                key="export_json",
+                label_visibility="collapsed",
+                help="전체 선택(Ctrl+A) 후 복사(Ctrl+C)하여 저장"
             )
         else:
             st.markdown(
@@ -269,29 +275,36 @@ with st.sidebar:
                 unsafe_allow_html=True
             )
 
-        # ── 포트폴리오 불러오기 ──────────────────────────────────────
-        uploaded = st.file_uploader(
-            "📂 포트폴리오 불러오기",
-            type=["json"],
-            key="portfolio_upload",
+        st.markdown("---")
+
+        # ── 포트폴리오 불러오기 (인라인 방식) ──────────────────────────
+        st.markdown(
+            '<div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:4px;">📂 포트폴리오 불러오기</div>'
+            '<div style="font-size:11px;color:#6B7280;margin-bottom:6px;">저장해둔 텍스트를 아래에 붙여넣고 불러오기를 누르세요</div>',
+            unsafe_allow_html=True
+        )
+        import_text = st.text_area(
+            "불러오기 데이터",
+            placeholder='저장한 JSON 텍스트를 여기에 붙여넣으세요…',
+            height=100,
+            key="import_json",
             label_visibility="collapsed"
         )
-        if uploaded is not None:
-            try:
-                loaded = json.loads(uploaded.read().decode("utf-8"))
-                if isinstance(loaded, list) and len(loaded) > 0:
-                    st.session_state.portfolio = loaded
-                    st.session_state.editing   = None
-                    st.success(f"✅ {len(loaded)}개 종목 불러오기 완료!")
-                    st.rerun()
-                else:
-                    st.error("올바른 포트폴리오 파일이 아닙니다.")
-            except Exception:
-                st.error("파일을 읽을 수 없습니다.")
-
-        st.markdown('<div style="font-size:10px;color:#D1D5DB;margin-top:4px;">'
-                    '📂 버튼으로 저장한 JSON 파일을 불러오세요</div>',
-                    unsafe_allow_html=True)
+        if st.button("📂 불러오기", use_container_width=True, key="do_import"):
+            if import_text.strip():
+                try:
+                    loaded = json.loads(import_text.strip())
+                    if isinstance(loaded, list) and len(loaded) > 0:
+                        st.session_state.portfolio = loaded
+                        st.session_state.editing   = None
+                        st.success(f"✅ {len(loaded)}개 종목 불러오기 완료!")
+                        st.rerun()
+                    else:
+                        st.error("올바른 포트폴리오 데이터가 아닙니다.")
+                except Exception:
+                    st.error("텍스트를 읽을 수 없습니다. 저장한 내용을 그대로 붙여넣으세요.")
+            else:
+                st.warning("텍스트를 먼저 붙여넣어 주세요.")
 
         st.markdown("---")
         if st.button("🔄 전체 초기화", use_container_width=True):
@@ -301,7 +314,7 @@ with st.sidebar:
         st.markdown(
             '<div style="font-size:11px;color:#9CA3AF;margin-top:8px;line-height:1.6;">'
             '세션 종료 시 포트폴리오가 초기화됩니다.<br>'
-            '💾 저장 버튼으로 백업해두세요!</div>',
+            '💾 저장 텍스트를 메모장에 복사해두세요!</div>',
             unsafe_allow_html=True
         )
 
