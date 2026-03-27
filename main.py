@@ -75,11 +75,19 @@ with st.sidebar:
                                  step=1.0, format="%g",                                      key=f"es_{i}")
             na = st.number_input("평균단가($)", value=float(stock["avg_price"]),
                                  min_value=0.01, max_value=999999.0, step=1.0, format="%g",  key=f"ea_{i}")
+            ng = st.number_input("목표가($)", value=float(stock.get("target_price", 0)),
+                                 min_value=0.0, max_value=999999.0, step=1.0, format="%g",  key=f"eg_{i}",
+                                 help="0 입력 시 미설정")
+            nsl = st.number_input("손절가($)", value=float(stock.get("stop_loss", 0)),
+                                  min_value=0.0, max_value=999999.0, step=1.0, format="%g", key=f"esl_{i}",
+                                  help="0 입력 시 미설정")
             c1, c2 = st.columns(2)
             with c1:
                 if st.button("✅ 저장", key=f"save_{i}", use_container_width=True):
                     st.session_state.portfolio[i].update(
-                        {"weight": round(nw, 1), "shares": round(ns, 3), "avg_price": na}
+                        {"weight": round(nw, 1), "shares": round(ns, 3), "avg_price": na,
+                         "target_price": ng if ng > 0 else 0,
+                         "stop_loss": nsl if nsl > 0 else 0}
                     )
                     st.session_state.editing = None
                     st.rerun()
@@ -224,17 +232,33 @@ with st.sidebar:
             key="add_a",
             help="현재가로 자동 입력됩니다. 직접 수정 가능"
         )
+        ng = st.number_input(
+            "목표가($)",
+            min_value=0.0, max_value=999999.0,
+            value=0.0, step=1.0, format="%g",
+            key="add_g",
+            help="목표 매도가 (0 = 미설정)"
+        )
+        nsl = st.number_input(
+            "손절가($)",
+            min_value=0.0, max_value=999999.0,
+            value=0.0, step=1.0, format="%g",
+            key="add_sl",
+            help="손절 기준가 (0 = 미설정)"
+        )
 
         c1, c2 = st.columns(2)
         with c1:
             if st.button("✅ 추가", key="do_add", use_container_width=True):
                 if final_ticker:
                     st.session_state.portfolio.append({
-                        "ticker":    final_ticker,
-                        "name":      auto_name or final_ticker,
-                        "weight":    round(nw, 1),
-                        "shares":    round(ns, 3),
-                        "avg_price": na,
+                        "ticker":       final_ticker,
+                        "name":         auto_name or final_ticker,
+                        "weight":       round(nw, 1),
+                        "shares":       round(ns, 3),
+                        "avg_price":    na,
+                        "target_price": ng if ng > 0 else 0,
+                        "stop_loss":    nsl if nsl > 0 else 0,
                     })
                     # show_add 유지 — 추가 후에도 검색창이 계속 표시됨
                     # 검색 상태만 초기화
