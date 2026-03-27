@@ -604,31 +604,102 @@ TICKER_NAME_MAP = {
     "AMT":"American Tower","PLD":"Prologis","EQIX":"Equinix",
     "NFLX":"Netflix","DIS":"Disney","VZ":"Verizon","T":"AT&T",
     "CMCSA":"Comcast","SNAP":"Snap","SPOT":"Spotify","LIT":"리튬 ETF","ARKK":"ARK ETF",
+
+    # ── 양자컴퓨팅
+    "IONQ":"IonQ","RGTI":"Rigetti Computing","QUBT":"Quantum Computing Inc",
+    "QBTS":"D-Wave Quantum","QTUM":"Defiance Quantum ETF",
+
+    # ── AI 인프라 / 데이터센터
+    "VRT":"Vertiv Holdings","SMCI":"Super Micro Computer",
+    "DELL":"Dell Technologies","HPE":"HP Enterprise",
+    "CDNS":"Cadence Design","SNPS":"Synopsys","KEYS":"Keysight",
+    "AEHR":"Aehr Test Systems","ONTO":"Onto Innovation",
+
+    # ── 우주·방산
+    "RKLB":"Rocket Lab","SPCE":"Virgin Galactic","ASTS":"AST SpaceMobile",
+    "LUNR":"Intuitive Machines","RDW":"Redwire","KTOS":"Kratos Defense",
+    "JOBY":"Joby Aviation","ACHR":"Archer Aviation",
+
+    # ── 바이오테크 (소형)
+    "NVAX":"Novavax","BNTX":"BioNTech","CRSP":"CRISPR Therapeutics",
+    "BEAM":"Beam Therapeutics","EDIT":"Editas Medicine","NTLA":"Intellia Therapeutics",
+    "HIMS":"Hims & Hers",
+
+    # ── 핀테크·크립토
+    "HOOD":"Robinhood","MSTR":"MicroStrategy","MARA":"Marathon Digital",
+    "RIOT":"Riot Platforms","CLSK":"CleanSpark","HUT":"Hut 8",
+    "SOFI":"SoFi Technologies","AFRM":"Affirm","UPST":"Upstart",
+
+    # ── 청정에너지·원자력
+    "OKLO":"Oklo","SMR":"NuScale Power","BWXT":"BWX Technologies",
+    "CCJ":"Cameco","UEC":"Uranium Energy","UUUU":"Energy Fuels",
+    "PLUG":"Plug Power","FCEL":"FuelCell Energy","BE":"Bloom Energy",
+
+    # ── 자율주행·로보틱스
+    "LAZR":"Luminar Technologies","MBLY":"Mobileye",
+
+    # ── 소형 성장주
+    "CELH":"Celsius Holdings","DKNG":"DraftKings","OPEN":"Opendoor",
+    "Z":"Zillow","AI":"C3.ai","PATH":"UiPath","S":"SentinelOne",
+    "CRWD":"CrowdStrike","ZS":"Zscaler","DDOG":"Datadog","NET":"Cloudflare",
+    "MDB":"MongoDB","GTLB":"GitLab","U":"Unity Software","RBLX":"Roblox",
 }
 
 def search_tickers(query):
     if not query or len(query) < 1: return []
     q = query.upper().strip()
     results = []; seen = set()
-    def _add(ticker, priority):
+
+    def _add(ticker, name, priority):
         if ticker in seen: return
         seen.add(ticker)
         sec = ETF_MAP.get(ticker, "Unknown")
         cfg = SECTOR_CONFIG.get(sec, SECTOR_CONFIG["Unknown"])
         results.append({
-            "ticker": ticker, "name": TICKER_NAME_MAP.get(ticker, ticker),
+            "ticker": ticker, "name": name or TICKER_NAME_MAP.get(ticker, ticker),
             "sector": sec, "sector_label": cfg["label"],
             "sector_icon": cfg["icon"], "priority": priority,
         })
-    if q in ETF_MAP: _add(q, 0)
+
+    # 1순위: ETF_MAP 직접 일치
+    if q in ETF_MAP: _add(q, TICKER_NAME_MAP.get(q, q), 0)
+    # 2순위: 티커 앞글자 일치
     for t in ETF_MAP:
-        if t.startswith(q) and t != q: _add(t, 1)
+        if t.startswith(q) and t != q: _add(t, TICKER_NAME_MAP.get(t, t), 1)
+    # 3순위: 티커 부분 일치
     for t in ETF_MAP:
-        if q in t and not t.startswith(q): _add(t, 2)
+        if q in t and not t.startswith(q): _add(t, TICKER_NAME_MAP.get(t, t), 2)
+    # 4순위: 종목명 검색 (한글/영문)
+    q_lower = query.lower()
     for t, name in TICKER_NAME_MAP.items():
-        if q in name.upper() and t not in seen: _add(t, 3)
+        if q_lower in name.lower() and t not in seen: _add(t, name, 3)
+
     results.sort(key=lambda x: (x["priority"], x["ticker"]))
-    return results[:8]
+    local_hits = results[:8]
+
+    # 5순위: yfinance 실시간 검색 (로컬에 없을 때)
+    if len(local_hits) == 0 and len(q) >= 1:
+        try:
+            import yfinance as yf
+            # 티커로 직접 시도
+            ticker_candidate = q.upper()
+            info = yf.Ticker(ticker_candidate).info
+            long_name = info.get("longName") or info.get("shortName") or ticker_candidate
+            if long_name and long_name != ticker_candidate:
+                sec = SECTOR_MAP.get(info.get("sector", "Unknown"), "Unknown")
+                cfg = SECTOR_CONFIG.get(sec, SECTOR_CONFIG["Unknown"])
+                local_hits = [{
+                    "ticker": ticker_candidate,
+                    "name": long_name,
+                    "sector": sec,
+                    "sector_label": cfg["label"],
+                    "sector_icon": cfg["icon"],
+                    "priority": 4,
+                }]
+        except Exception:
+            pass
+
+    return local_hits[:8]
 
 def get_signal(wr):
     if wr >= 60:   return "매수 우위",  "badge-green",  "#059669"
