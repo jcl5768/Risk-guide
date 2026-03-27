@@ -10,6 +10,7 @@ from engine import (
     get_signal, zcolor, zdesc, corr_color,
     get_fear_greed, get_portfolio_lv1,
     calc_var, calc_portfolio_var, calc_monte_carlo, calc_bayesian_update,
+    get_portfolio_correlation_matrix, simulate_portfolio_history,
 )
 
 
@@ -469,6 +470,249 @@ def render_main_page():
                 unsafe_allow_html=True
             )
 
+    # ── 섹션 A: 목표가 & 손절가 현황 ─────────────────────────────────────────
+    target_stocks = [s for s in portfolio if s.get("target_price", 0) > 0 or s.get("stop_loss", 0) > 0]
+    if target_stocks:
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="section-hdr">🎯 목표가 & 손절가 현황</div>', unsafe_allow_html=True)
+        for s in target_stocks:
+            _, cur = get_z_and_price(s["ticker"])
+            tp  = s.get("target_price", 0)
+            sl  = s.get("stop_loss", 0)
+            avg = s.get("avg_price", 0)
+            # 목표가 달성률
+            if tp > 0 and avg > 0:
+                tp_progress = min(100, max(0, (cur - avg) / (tp - avg) * 100)) if tp != avg else 100
+                tp_remain   = round((tp - cur) / cur * 100, 1) if cur > 0 else 0
+                tp_clr      = "#059669" if cur >= tp else "#2563EB"
+            else:
+                tp_progress = 0; tp_remain = 0; tp_clr = "#9CA3AF"
+            # 손절까지 여유
+            if sl > 0 and cur > 0:
+                sl_remain = round((cur - sl) / cur * 100, 1)
+                sl_clr    = "#DC2626" if sl_remain < 5 else "#D97706" if sl_remain < 10 else "#059669"
+                sl_warn   = "⚠ 손절 임박!" if sl_remain < 5 else ""
+            else:
+                sl_remain = 0; sl_clr = "#9CA3AF"; sl_warn = ""
+
+            tp_html = ""
+            if tp > 0:
+                tp_html = (
+                    f'<div style="margin-bottom:6px;">'
+                    f'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">'
+                    f'<span style="color:#6B7280;">🎯 목표가 ${tp:.2f}</span>'
+                    f'<span style="color:{tp_clr};font-weight:600;">'
+                    f'{"달성! ✓" if cur >= tp else f"+{tp_remain:.1f}% 남음"}</span></div>'
+                    f'<div style="height:5px;background:#F3F4F6;border-radius:3px;">'
+                    f'<div style="height:100%;width:{tp_progress:.0f}%;background:{tp_clr};border-radius:3px;"></div></div></div>'
+                )
+            sl_html = ""
+            if sl > 0:
+                sl_html = (
+                    f'<div style="display:flex;justify-content:space-between;font-size:11px;">'
+                    f'<span style="color:#6B7280;">🛑 손절가 ${sl:.2f}</span>'
+                    f'<span style="color:{sl_clr};font-weight:600;">여유 {sl_remain:.1f}% {sl_warn}</span></div>'
+                )
+
+            if tp_html or sl_html:
+                st.markdown(
+                    f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;padding:12px 16px;margin-bottom:8px;">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
+                    f'<span style="font-size:14px;font-weight:700;color:#1A1D23;">{s["ticker"]}</span>'
+                    f'<span style="font-size:13px;font-weight:600;color:#374151;">${cur:.2f}</span></div>'
+                    f'{tp_html}{sl_html}</div>',
+                    unsafe_allow_html=True
+                )
+
+    # ── 섹션 B: 포트폴리오 수익률 시뮬레이션 (6개월) ─────────────────────────
+    if len(portfolio) >= 2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="section-hdr">📈 포트폴리오 6개월 수익률 시뮬레이션</div>', unsafe_allow_html=True)
+        with st.spinner("수익률 시뮬레이션 계산 중..."):
+            port_snap = tuple((s["ticker"], s["weight"]) for s in portfolio)
+            sim = simulate_portfolio_history(port_snap)
+
+        if sim:
+            final = sim["final_ret"]
+            spy_f = sim["spy_final_ret"]
+            mdd   = sim["max_drawdown"]
+            alpha = round(final - spy_f, 2)
+            f_clr = "#059669" if final >= 0 else "#DC2626"
+            s_clr = "#059669" if spy_f >= 0 else "#DC2626"
+            a_clr = "#059669" if alpha >= 0 else "#DC2626"
+            m_clr = "#DC2626" if mdd < -10 else "#D97706" if mdd < -5 else "#059669"
+
+            # KPI 행
+            kpi_html = (
+                f'<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;">'
+                f'<div style="flex:1;min-width:70px;background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">'
+                f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:2px;">내 포트폴리오</div>'
+                f'<div style="font-size:18px;font-weight:700;color:{f_clr};">{final:+.2f}%</div></div>'
+                f'<div style="flex:1;min-width:70px;background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">'
+                f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:2px;">S&P500 벤치마크</div>'
+                f'<div style="font-size:18px;font-weight:700;color:{s_clr};">{spy_f:+.2f}%</div></div>'
+                f'<div style="flex:1;min-width:70px;background:#F9FAFB;border-radius:8px;padding:10px;text-align:center;">'
+                f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:2px;">초과수익(α)</div>'
+                f'<div style="font-size:18px;font-weight:700;color:{a_clr};">{alpha:+.2f}%</div></div>'
+                f'<div style="flex:1;min-width:70px;background:#FEF2F2;border-radius:8px;padding:10px;text-align:center;">'
+                f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:2px;">최대 낙폭(MDD)</div>'
+                f'<div style="font-size:18px;font-weight:700;color:{m_clr};">{mdd:.2f}%</div></div>'
+                f'</div>'
+            )
+
+            # 라인 차트
+            sim_fig = go.Figure()
+            sim_fig.add_trace(go.Scatter(
+                x=sim["dates"], y=sim["portfolio_returns"],
+                mode="lines", name="내 포트폴리오",
+                line=dict(color="#2563EB", width=2.5),
+                fill="tozeroy",
+                fillcolor="rgba(37,99,235,0.08)",
+                hovertemplate="<b>포트폴리오</b>: %{y:+.2f}%<extra></extra>",
+            ))
+            sim_fig.add_trace(go.Scatter(
+                x=sim["dates"], y=sim["spy_returns"],
+                mode="lines", name="S&P500",
+                line=dict(color="#9CA3AF", width=1.5, dash="dot"),
+                hovertemplate="<b>S&P500</b>: %{y:+.2f}%<extra></extra>",
+            ))
+            sim_fig.add_hline(y=0, line_dash="dash", line_color="#E8EAED", line_width=1)
+            sim_fig.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(248,250,252,0.5)",
+                margin=dict(t=10, b=4, l=0, r=10), height=200,
+                legend=dict(bgcolor="rgba(255,255,255,0.8)", bordercolor="#E8EAED",
+                            borderwidth=1, font=dict(size=10), orientation="h", y=1.04, x=0),
+                xaxis=dict(showgrid=False, tickfont=dict(size=9, color="#9CA3AF")),
+                yaxis=dict(showgrid=True, gridcolor="#F3F4F6", ticksuffix="%",
+                           tickfont=dict(size=9, color="#9CA3AF"), side="right"),
+                hovermode="x unified",
+            )
+
+            # 종목별 수익 바 차트
+            if sim["stock_rets"]:
+                sr_items = sorted(sim["stock_rets"].items(), key=lambda x: -x[1])
+                sr_labels = [x[0] for x in sr_items]
+                sr_vals   = [x[1] for x in sr_items]
+                sr_colors = ["#059669" if v >= 0 else "#DC2626" for v in sr_vals]
+                bar_fig = go.Figure(go.Bar(
+                    x=sr_labels, y=sr_vals,
+                    marker_color=sr_colors, opacity=0.85,
+                    text=[f"{v:+.1f}%" for v in sr_vals],
+                    textposition="outside",
+                    textfont=dict(size=10),
+                    hovertemplate="<b>%{x}</b>: %{y:+.2f}%<extra></extra>",
+                ))
+                bar_fig.update_layout(
+                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
+                    margin=dict(t=20, b=0, l=0, r=0), height=150,
+                    xaxis=dict(showgrid=False, tickfont=dict(size=10)),
+                    yaxis=dict(showgrid=False, ticksuffix="%", tickfont=dict(size=9)),
+                    showlegend=False,
+                )
+
+            best_t, best_r = sim["best_stock"]
+            worst_t, worst_r = sim["worst_stock"]
+
+            st.markdown(
+                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;padding:14px 16px;">'
+                f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:10px;">'
+                f'6개월 전 현재 비중대로 구성했다면 (과거 데이터 기반 참고치)</div>'
+                f'{kpi_html}',
+                unsafe_allow_html=True
+            )
+            st.plotly_chart(sim_fig, use_container_width=True)
+            if sim["stock_rets"]:
+                st.markdown('<div style="font-size:10px;color:#9CA3AF;margin:4px 0 2px;padding:0 2px;">종목별 6개월 수익률</div>', unsafe_allow_html=True)
+                st.plotly_chart(bar_fig, use_container_width=True)
+            st.markdown(
+                f'<div style="display:flex;justify-content:space-between;font-size:11px;color:#6B7280;padding:0 2px 8px;">'
+                f'<span>🏆 최고: <b style="color:#059669;">{best_t} {best_r:+.1f}%</b></span>'
+                f'<span>📉 최저: <b style="color:#DC2626;">{worst_t} {worst_r:+.1f}%</b></span></div>',
+                unsafe_allow_html=True
+            )
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.info("시뮬레이션 데이터를 불러올 수 없습니다. (종목당 최소 20거래일 데이터 필요)")
+
+    # ── 섹션 C: 종목 간 상관관계 히트맵 ─────────────────────────────────────
+    if len(portfolio) >= 2:
+        st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown('<div class="section-hdr">🔗 종목 간 상관관계 히트맵</div>', unsafe_allow_html=True)
+        with st.spinner("상관계수 계산 중..."):
+            tickers_t = tuple(s["ticker"] for s in portfolio)
+            corr_mat, warnings = get_portfolio_correlation_matrix(tickers_t)
+
+        if corr_mat is not None:
+            # 경고 배너
+            if warnings:
+                warn_html = ""
+                for w in warnings[:3]:
+                    clr = "#DC2626" if w["type"] == "동조" else "#7C3AED"
+                    warn_html += (
+                        f'<span style="background:#FEF2F2;border:1px solid #FECACA;'
+                        f'border-radius:4px;padding:2px 8px;font-size:11px;color:{clr};'
+                        f'font-weight:600;margin-right:6px;margin-bottom:4px;display:inline-block;">'
+                        f'⚠ {w["t1"]}↔{w["t2"]} r={w["r"]:+.2f} ({w["type"]})</span>'
+                    )
+                st.markdown(
+                    f'<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;'
+                    f'padding:10px 14px;margin-bottom:10px;">'
+                    f'<div style="font-size:11px;font-weight:700;color:#D97706;margin-bottom:6px;">'
+                    f'⚠ 고상관 종목 감지 (분산 효과 감소)</div>'
+                    f'{warn_html}'
+                    f'<div style="font-size:10px;color:#9CA3AF;margin-top:6px;">'
+                    f'r ≥ 0.75이면 두 종목이 거의 같이 움직입니다. 진정한 분산을 위해 종목을 조정하세요.</div></div>',
+                    unsafe_allow_html=True
+                )
+
+            tickers_list = corr_mat.columns.tolist()
+            z_vals = corr_mat.values.tolist()
+
+            # 색상 구성: 대각선=회색, 양=파랑, 음=빨강
+            heatmap_fig = go.Figure(go.Heatmap(
+                z=z_vals,
+                x=tickers_list,
+                y=tickers_list,
+                colorscale=[
+                    [0.0,  "#DC2626"],
+                    [0.4,  "#FCA5A5"],
+                    [0.5,  "#F3F4F6"],
+                    [0.6,  "#93C5FD"],
+                    [1.0,  "#1D4ED8"],
+                ],
+                zmin=-1, zmax=1,
+                text=[[f"{v:.2f}" for v in row] for row in z_vals],
+                texttemplate="%{text}",
+                textfont=dict(size=11, color="#1A1D23"),
+                hovertemplate="<b>%{x} ↔ %{y}</b><br>상관계수: %{z:.3f}<extra></extra>",
+                showscale=True,
+                colorbar=dict(
+                    thickness=10, len=0.8,
+                    tickvals=[-1, -0.5, 0, 0.5, 1],
+                    ticktext=["-1", "-0.5", "0", "+0.5", "+1"],
+                    tickfont=dict(size=9),
+                )
+            ))
+            n = len(tickers_list)
+            cell_size = max(50, min(80, 400 // n))
+            heatmap_fig.update_layout(
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                margin=dict(t=10, b=10, l=10, r=60),
+                height=max(200, n * cell_size + 60),
+                xaxis=dict(tickfont=dict(size=11, color="#374151"), side="bottom"),
+                yaxis=dict(tickfont=dict(size=11, color="#374151"), autorange="reversed"),
+            )
+            st.plotly_chart(heatmap_fig, use_container_width=True)
+            st.markdown(
+                '<div style="font-size:10px;color:#9CA3AF;margin-top:2px;">'
+                '최근 3개월 일별 수익률 기반 · 파랑=동조 / 빨강=역방향 / 회색=무관</div>',
+                unsafe_allow_html=True
+            )
+        else:
+            st.info("상관계수 데이터를 불러올 수 없습니다. (종목당 최소 20거래일 데이터 필요)")
+
 
 # ── 상세 분석 페이지 ──────────────────────────────────────────────────────────
 def render_detail_page():
@@ -570,6 +814,42 @@ def render_detail_page():
             f'<div style="font-size:10px;color:#D97706;padding:0 4px 8px;">{bep_txt}</div>',
             unsafe_allow_html=True
         )
+
+    # ── 목표가 & 손절가 진행 바 (상세 페이지) ────────────────────────────────
+    tp  = si.get("target_price", 0)
+    sl  = si.get("stop_loss", 0)
+    if tp > 0 or sl > 0:
+        avg = si.get("avg_price", 0)
+        tp_html = ""
+        sl_html = ""
+        if tp > 0 and avg > 0:
+            tp_progress = min(100, max(0, (price - avg) / (tp - avg) * 100)) if tp != avg else 100
+            tp_remain   = round((tp - price) / price * 100, 1) if price > 0 else 0
+            tp_clr      = "#059669" if price >= tp else "#2563EB"
+            tp_label    = "달성! 🎉" if price >= tp else f"+{tp_remain:.1f}% 남음"
+            tp_html = (
+                f'<div style="margin-bottom:6px;">'
+                f'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">'
+                f'<span style="color:#6B7280;">🎯 목표가 ${tp:.2f}</span>'
+                f'<span style="color:{tp_clr};font-weight:600;">{tp_label}</span></div>'
+                f'<div style="height:6px;background:#F3F4F6;border-radius:3px;">'
+                f'<div style="height:100%;width:{tp_progress:.0f}%;background:{tp_clr};border-radius:3px;"></div></div></div>'
+            )
+        if sl > 0 and price > 0:
+            sl_remain = round((price - sl) / price * 100, 1)
+            sl_clr    = "#DC2626" if sl_remain < 5 else "#D97706" if sl_remain < 10 else "#059669"
+            sl_warn   = " ⚠ 손절 임박!" if sl_remain < 5 else ""
+            sl_html = (
+                f'<div style="display:flex;justify-content:space-between;font-size:11px;">'
+                f'<span style="color:#6B7280;">🛑 손절가 ${sl:.2f}</span>'
+                f'<span style="color:{sl_clr};font-weight:600;">여유 {sl_remain:.1f}%{sl_warn}</span></div>'
+            )
+        if tp_html or sl_html:
+            st.markdown(
+                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;'
+                f'padding:10px 14px;margin-bottom:10px;">{tp_html}{sl_html}</div>',
+                unsafe_allow_html=True
+            )
 
     # AI 요약 한 줄 (핵심 드라이버 기반)
     top_pos_inds = sorted([i for i in inds if i["z"]*i["direction"]>0.3],
