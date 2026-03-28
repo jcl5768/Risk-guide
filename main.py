@@ -19,7 +19,7 @@ def init_session():
     if "selected"      not in st.session_state: st.session_state.selected      = None
     if "editing"       not in st.session_state: st.session_state.editing       = None
     if "show_add"      not in st.session_state: st.session_state.show_add      = False
-    if "chart_period"  not in st.session_state: st.session_state.chart_period  = "1개월"
+    if "chart_period"  not in st.session_state: st.session_state.chart_period  = "1달"
     if "open_sidebar"  not in st.session_state: st.session_state.open_sidebar  = False
 
 init_session()
@@ -252,15 +252,17 @@ with st.sidebar:
             if st.button("✅ 추가", key="do_add", use_container_width=True):
                 if final_ticker:
                     st.session_state.portfolio.append({
-                        "ticker":    final_ticker,
-                        "name":      auto_name or final_ticker,
-                        "weight":    round(nw, 1),
-                        "shares":    round(ns, 3),
-                        "avg_price": na,
+                        "ticker":       final_ticker,
+                        "name":         auto_name or final_ticker,
+                        "weight":       round(nw, 1),
+                        "shares":       round(ns, 3),
+                        "avg_price":    na,
+                        "target_price": ng if ng > 0 else 0,
+                        "stop_loss":    nsl if nsl > 0 else 0,
                     })
-                    # 검색창·선택값 완전 초기화 (selectbox 키 포함)
-                    for k in ("_sel_ticker", "_sel_name", "search_q", "sg_select",
-                              "add_w", "add_s", "add_a"):
+                    # show_add 유지 — 추가 후에도 검색창이 계속 표시됨
+                    # 검색 상태만 초기화
+                    for k in ("_sel_ticker", "_sel_name", "search_q", "sg_select"):
                         st.session_state.pop(k, None)
                     st.rerun()
         with c2:
