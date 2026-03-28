@@ -81,12 +81,11 @@ def get_percentile(ticker):
 
 # ── 차트 데이터 ───────────────────────────────────────────────────────────────
 PERIOD_MAP = {
-    "1개월": ("1mo",  "1d"),   # 1개월치 일봉 (약 21거래일)
+    "1개월": ("1mo",  "1d"),   # 1개월치 일봉
     "3개월": ("3mo",  "1d"),   # 3개월치 일봉
     "1년":   ("1y",   "1wk"),  # 1년치 주봉
     "5년":   ("5y",   "1mo"),  # 5년치 월봉
 }
-# pages.py 기간 버튼 레이블 목록 (순서 유지)
 PERIOD_LABELS = ["1개월", "3개월", "1년", "5년"]
 
 @st.cache_data(ttl=120)
@@ -131,7 +130,7 @@ def get_price_history(ticker, period="60d"):
 
 
 # ── 섹터 분석 ─────────────────────────────────────────────────────────────────
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=600)
 def get_sector_analysis(ticker):
     try:
         sk  = detect_sector(ticker)
@@ -549,14 +548,14 @@ def get_korean_news(ticker, stock_name=""):
 
 @st.cache_data(ttl=600)
 def get_news(ticker):
-    # 명확한 긍정 표현
+    # 구문 기반 긍정 표현 (단순 단어 대신 실제 뉴스 표현)
     pos_kw = [
         "beat estimates", "beats expectations", "record revenue", "record profit",
         "raises guidance", "raised guidance", "strong earnings", "profit surge",
         "upgrade", "buy rating", "outperform", "bullish", "breakthrough",
-        "partnership deal", "major contract", "fda approval", "clinical success",
+        "fda approval", "clinical success", "major contract", "partnership deal",
     ]
-    # 명확한 부정 표현 (단순 단어가 아닌 구문 위주)
+    # 구문 기반 부정 표현
     neg_kw = [
         "misses estimates", "misses expectations", "profit warning", "lowers guidance",
         "lowered guidance", "revenue decline", "earnings miss", "downgrade",
@@ -564,27 +563,21 @@ def get_news(ticker):
         "sec investigation", "class action", "fraud", "layoffs", "job cuts",
         "revenue fell", "loss widens", "guidance cut",
     ]
-    # 부정어가 앞에 붙으면 의미 반전 (예: "not profitable" → 부정)
     neg_prefix = ["not ", "no ", "miss", "fail", "below", "weak", "poor", "disappoint"]
-
     try:
         news_list = yf.Ticker(ticker).news[:8]
         score = 0; analyzed = []
         for n in news_list:
             raw_title = n.get("title", "")
             title_lo  = raw_title.lower()
-
-            # 감성 판단: 구문 매칭 우선, 단어 매칭 보조
             sentiment = "Neutral"
             if any(kw in title_lo for kw in pos_kw):
-                # 부정어가 앞에 오면 실제로는 부정
                 if any(title_lo.startswith(p) or f" {p}" in title_lo for p in neg_prefix):
                     sentiment = "Negative"; score -= 1
                 else:
                     sentiment = "Positive"; score += 1
             elif any(kw in title_lo for kw in neg_kw):
                 sentiment = "Negative"; score -= 1
-
             news_type = _classify_news(raw_title)
             analyzed.append({
                 "title":        raw_title,
@@ -726,38 +719,7 @@ def search_tickers(query):
 
     return local_hits[:8]
 
-@st.cache_data(ttl=600)
-def get_batch_portfolio_data(tickers_tuple):
-    """
-    메인 대시보드용 배치 로더.
-    종목 리스트를 받아 z_score·현재가·섹터분석·승률을 한 번에 계산.
-    tickers_tuple: tuple of ticker strings (캐시 호환)
-    반환: {ticker: {"z", "price", "sk", "cfg", "inds", "win", "breakdown"}}
-    """
-    result = {}
-    for ticker in tickers_tuple:
-        try:
-            zs, price     = get_z_and_price(ticker)
-            sk, cfg, inds = get_sector_analysis(ticker)
-            nb, items     = get_news(ticker)
-            win, breakdown = calc_win_rate(
-                zs, inds, nb, stock_ticker=ticker, news_items=items
-            )
-            result[ticker] = {
-                "z": zs, "price": price,
-                "sk": sk, "cfg": cfg, "inds": inds,
-                "win": win, "breakdown": breakdown,
-            }
-        except Exception:
-            result[ticker] = {
-                "z": 0.0, "price": 0.0,
-                "sk": "Unknown",
-                "cfg": SECTOR_CONFIG["Unknown"],
-                "inds": [],
-                "win": 50.0,
-                "breakdown": {},
-            }
-    return result
+def get_signal(wr):
     if wr >= 60:   return "매수 우위",  "badge-green",  "#059669"
     elif wr >= 45: return "중립 관망",  "badge-yellow", "#D97706"
     else:          return "리스크 경고","badge-red",    "#DC2626"
@@ -943,21 +905,15 @@ def calc_portfolio_var(portfolio, confidence=0.95):
                 shares    = stock.get("shares", 0)
                 if shares > 0:
                     value = cur_price * shares
+                    total_value += value
                 else:
-                    # 수량 미입력 시 비중(%) 자체를 가중치로 사용
-                    value = float(stock.get("weight", 10))
+                    value = float(stock.get("weight", 10))  # 비중 자체를 가중치로
                 weights_list.append(value)
-                total_value += cur_price * shares  # 실제 평가금액은 shares 기준 유지
             except Exception:
                 continue
 
         if not returns_list or len(weights_list) == 0:
             return None
-
-        # 비중 합이 0이면 균등 분배
-        total_w = sum(weights_list)
-        if total_w == 0:
-            weights_list = [1.0] * len(weights_list)
 
         # 공통 날짜 맞추기
         import pandas as pd
@@ -1214,7 +1170,7 @@ def simulate_portfolio_history(portfolio_snapshot):
         best_stock  = max(stock_rets.items(), key=lambda x: x[1]) if stock_rets else ("—", 0)
         worst_stock = min(stock_rets.items(), key=lambda x: x[1]) if stock_rets else ("—", 0)
         dates = [str(d)[:10] for d in port_pct.index.tolist()]
-        spy_aligned = spy_ret.reindex(port_pct.index).fillna(0).round(2).tolist()
+        spy_aligned = spy_ret.reindex(port_pct.index).ffill().fillna(0).round(2).tolist()
         return {
             "dates": dates,
             "portfolio_returns": port_pct.tolist(),
@@ -1228,3 +1184,41 @@ def simulate_portfolio_history(portfolio_snapshot):
         }
     except Exception:
         return None
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# ── 배치 로더: 메인 대시보드용 종목 일괄 계산 ─────────────────────────────────
+# ══════════════════════════════════════════════════════════════════════════════
+
+@st.cache_data(ttl=600)
+def get_batch_portfolio_data(tickers_tuple):
+    """
+    메인 대시보드용 배치 로더.
+    종목 리스트를 받아 z·가격·섹터분석·승률을 한 번에 캐시 조회.
+    tickers_tuple: tuple of ticker strings (캐시 호환)
+    반환: {ticker: {"z", "price", "sk", "cfg", "inds", "win", "breakdown"}}
+    """
+    result = {}
+    for ticker in tickers_tuple:
+        try:
+            zs, price      = get_z_and_price(ticker)
+            sk, cfg, inds  = get_sector_analysis(ticker)
+            nb, items      = get_news(ticker)
+            win, breakdown = calc_win_rate(
+                zs, inds, nb, stock_ticker=ticker, news_items=items
+            )
+            result[ticker] = {
+                "z": zs, "price": price,
+                "sk": sk, "cfg": cfg, "inds": inds,
+                "win": win, "breakdown": breakdown,
+            }
+        except Exception:
+            result[ticker] = {
+                "z": 0.0, "price": 0.0,
+                "sk": "Unknown",
+                "cfg": SECTOR_CONFIG["Unknown"],
+                "inds": [],
+                "win": 50.0,
+                "breakdown": {},
+            }
+    return result
