@@ -359,7 +359,7 @@ def render_main_page():
         unsafe_allow_html=True
     )
 
-    # ── 배치 로딩: 모든 종목 데이터를 한 번에 캐시 조회 ─────────────────
+    # 배치 로딩: 모든 종목 데이터를 한 번에 캐시 조회
     _tickers_t = tuple(s["ticker"] for s in portfolio)
     with st.spinner("포트폴리오 분석 중..."):
         _batch = get_batch_portfolio_data(_tickers_t)
@@ -369,12 +369,12 @@ def render_main_page():
         cols = st.columns(len(row))
         for col, stock in zip(cols, row):
             with col:
-                _d  = _batch.get(stock["ticker"], {})
-                zs  = _d.get("z", 0.0)
-                price    = _d.get("price", 0.0)
-                cfg      = _d.get("cfg", SECTOR_CONFIG["Unknown"])
-                inds     = _d.get("inds", [])
-                win      = _d.get("win", 50.0)
+                _d        = _batch.get(stock["ticker"], {})
+                zs        = _d.get("z", 0.0)
+                price     = _d.get("price", 0.0)
+                cfg       = _d.get("cfg", SECTOR_CONFIG["Unknown"])
+                inds      = _d.get("inds", [])
+                win       = _d.get("win", 50.0)
                 breakdown = _d.get("breakdown", {})
 
                 st_, sc_, sv_ = get_signal(win)
@@ -382,7 +382,7 @@ def render_main_page():
                       if price and stock["avg_price"] > 0 else None
                 pnl_text = f"{'+'if pnl>=0 else ''}{pnl:.1f}%" if pnl is not None else "—"
                 pc   = "#059669" if (pnl or 0) >= 0 else "#DC2626"
-                ti   = max(inds, key=lambda x: abs(x["z"] * x["driver_weight"]))
+                ti   = max(inds, key=lambda x: abs(x["z"] * x["driver_weight"])) if inds else {"name": "—", "direction": 1, "z": 0.0}
                 tc   = ti["z"] * ti["direction"]
                 tclr = "#059669" if tc > 0 else "#DC2626"
                 weighted_z = get_weighted_z(inds)
