@@ -11,6 +11,7 @@ from engine import (
     get_fear_greed, get_portfolio_lv1,
     calc_var, calc_portfolio_var, calc_monte_carlo, calc_bayesian_update,
     get_portfolio_correlation_matrix, simulate_portfolio_history,
+    get_batch_portfolio_data,
 )
 
 
@@ -358,16 +359,23 @@ def render_main_page():
         unsafe_allow_html=True
     )
 
+    # ── 배치 로딩: 모든 종목 데이터를 한 번에 캐시 조회 ─────────────────
+    _tickers_t = tuple(s["ticker"] for s in portfolio)
+    with st.spinner("포트폴리오 분석 중..."):
+        _batch = get_batch_portfolio_data(_tickers_t)
+
     for rs in range(0, len(portfolio), 4):
         row  = portfolio[rs: rs + 4]
         cols = st.columns(len(row))
         for col, stock in zip(cols, row):
             with col:
-                with st.spinner(""):
-                    zs, price      = get_z_and_price(stock["ticker"])
-                    _, cfg, inds   = get_sector_analysis(stock["ticker"])
-                    nb, news_items = get_news(stock["ticker"])
-                    win, breakdown = calc_win_rate(zs, inds, nb, stock_ticker=stock["ticker"], news_items=news_items)
+                _d  = _batch.get(stock["ticker"], {})
+                zs  = _d.get("z", 0.0)
+                price    = _d.get("price", 0.0)
+                cfg      = _d.get("cfg", SECTOR_CONFIG["Unknown"])
+                inds     = _d.get("inds", [])
+                win      = _d.get("win", 50.0)
+                breakdown = _d.get("breakdown", {})
 
                 st_, sc_, sv_ = get_signal(win)
                 pnl = ((price - stock["avg_price"]) / stock["avg_price"] * 100) \
@@ -915,7 +923,7 @@ def render_detail_page():
         if not df.empty and "Close" in df.columns:
             r, g, b = int(sv_[1:3], 16), int(sv_[3:5], 16), int(sv_[5:7], 16)
 
-            if pk in ("1달", "1년") and all(c in df.columns for c in ["Open", "High", "Low", "Close"]):
+            if pk in ("1개월", "3개월", "1년", "5년") and all(c in df.columns for c in ["Open", "High", "Low", "Close"]):
                 chart_fig = go.Figure()
                 # 캔들스틱 — 더 세련된 색상
                 chart_fig.add_trace(go.Candlestick(
@@ -1031,7 +1039,7 @@ def render_detail_page():
 
             # ── 기간 선택 버튼 — 4개 균등, 한 줄 전체 너비 ──────────
             period_cols = st.columns(4)
-            for idx, label in enumerate(["1일", "1주", "1달", "1년"]):
+            for idx, label in enumerate(["1개월", "3개월", "1년", "5년"]):
                 with period_cols[idx]:
                     if st.button(
                         label,
