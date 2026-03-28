@@ -1814,3 +1814,4 @@ def render_detail_page():
             f'</div>',
             unsafe_allow_html=True
         )
+
