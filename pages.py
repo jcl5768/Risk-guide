@@ -266,7 +266,7 @@ def render_main_page():
     if portfolio:
         fg_score, fg_label, fg_clr = get_fear_greed()
         with st.spinner("Lv.1 분석 중..."):
-            avg_win, w_icon, w_label, w_clr, w_summary = get_portfolio_lv1(portfolio)
+            avg_win, w_icon, w_label, w_clr, w_summary = get_portfolio_lv1(portfolio, _batch)
         st.markdown(
             f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
             f'padding:14px 18px;margin-bottom:16px;">'
@@ -361,8 +361,12 @@ def render_main_page():
 
     # 배치 로딩: 모든 종목 데이터를 한 번에 캐시 조회
     _tickers_t = tuple(s["ticker"] for s in portfolio)
-    with st.spinner("포트폴리오 분석 중..."):
+    # 캐시 히트 시 status 박스 즉시 닫힘, 첫 로딩 시만 실제 대기
+    with st.status("📡 시장 데이터 수집 중...", expanded=False) as _status:
+        for _s in portfolio:
+            _status.update(label=f"🔍 {_s['ticker']} 분석 중...")
         _batch = get_batch_portfolio_data(_tickers_t)
+        _status.update(label=f"✅ {len(portfolio)}개 종목 분석 완료", state="complete", expanded=False)
 
     for rs in range(0, len(portfolio), 4):
         row  = portfolio[rs: rs + 4]
@@ -985,6 +989,26 @@ def render_detail_page():
                         showlegend=False, hoverinfo="skip"
                     ))
 
+            # ── 평단가 수평선 ─────────────────────────────────────────────
+            avg_p = si.get("avg_price", 0)
+            if avg_p and avg_p > 0 and not df.empty:
+                # 평단 대비 현재 위치에 따라 색상 결정
+                _avg_clr = "#059669" if price >= avg_p else "#DC2626"
+                chart_fig.add_hline(
+                    y=avg_p,
+                    line=dict(color=_avg_clr, width=1.5, dash="dot"),
+                    annotation=dict(
+                        text=f"평단 ${avg_p:.2f}",
+                        font=dict(size=10, color=_avg_clr),
+                        bgcolor="rgba(255,255,255,0.85)",
+                        bordercolor=_avg_clr,
+                        borderwidth=1,
+                        borderpad=3,
+                        xref="paper", x=0.01,
+                        showarrow=False,
+                    ),
+                )
+
             chart_fig.update_layout(
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(248,250,252,0.6)",
@@ -995,6 +1019,7 @@ def render_detail_page():
                     rangeslider=dict(visible=False),
                     tickfont=dict(size=10, color="#9CA3AF"),
                     showline=True, linecolor="#E8EAED",
+                    fixedrange=False,   # 축소 허용
                 ),
                 yaxis=dict(
                     showgrid=True, gridcolor="rgba(226,232,240,0.5)",
@@ -1003,6 +1028,7 @@ def render_detail_page():
                     showline=False,
                     tickprefix="$",
                     side="right",
+                    fixedrange=False,   # 축소 허용
                 ),
                 legend=dict(
                     bgcolor="rgba(255,255,255,0.8)",
@@ -1013,8 +1039,23 @@ def render_detail_page():
                 margin=dict(t=10, b=4, l=0, r=50),
                 height=240,
                 hovermode="x unified",
+                dragmode="zoom",        # 드래그 = 범위 선택 줌
+                doubleclick="reset",    # 더블탭/더블클릭 = 전체 범위로 리셋(축소)
             )
-            st.plotly_chart(chart_fig, use_container_width=True)
+            # scrollZoom: 핀치로 확대·축소, doubleclick으로 원상복구
+            _chart_cfg = {
+                "scrollZoom": True,
+                "displayModeBar": True,
+                "modeBarButtonsToRemove": [
+                    "select2d", "lasso2d", "autoScale2d",
+                    "hoverClosestCartesian", "hoverCompareCartesian",
+                    "toggleSpikelines",
+                ],
+                "modeBarButtonsToAdd": ["resetScale2d"],
+                "displaylogo": False,
+                "toImageButtonOptions": {"format": "png", "scale": 2},
+            }
+            st.plotly_chart(chart_fig, use_container_width=True, config=_chart_cfg)
 
             # 거래량 (여백 없이 바로 아래)
             if "Volume" in df.columns and df["Volume"].sum() > 0:
