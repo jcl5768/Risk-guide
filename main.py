@@ -6,7 +6,7 @@ from engine import detect_sector, get_z_and_price, search_tickers, TICKER_NAME_M
 from pages import apply_custom_style, render_main_page, render_detail_page
 
 st.set_page_config(
-    page_title="Risk Guide", page_icon="📊",
+    page_title="Signum", page_icon="🔭",
     layout="wide", initial_sidebar_state="expanded"
 )
 apply_custom_style()
