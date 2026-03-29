@@ -506,6 +506,18 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
              + macro_score + news_adj + regime_adj + momentum_score)
     final = round(max(5.0, min(95.0, total)), 1)
 
+    # 신뢰구간: 구성 요소 수(5개)와 각 점수의 표준편차로 근사
+    # 각 구성요소 불확실성의 합으로 ±범위 추정
+    _uncertainty = round(
+        (abs(position_score) * 0.3    # 가격위치 불확실성
+         + abs(macro_score) * 0.25    # 거시 불확실성
+         + abs(news_adj) * 0.4        # 뉴스 불확실성 (가장 높음)
+         + abs(momentum_score) * 0.2  # 모멘텀 불확실성
+         + 5.0                        # 기본 모델 오차
+        ), 1
+    )
+    confidence_range = round(min(_uncertainty, 20.0), 1)  # 최대 ±20점
+
     return final, {
         "base":            50.0,
         "position_score":  position_score,
@@ -518,6 +530,7 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
         "momentum_score":  momentum_score,
         "momentum_meta":   momentum_meta,
         "momentum_offset": momentum_offset,
+        "confidence_range": confidence_range,
         "total_raw":       round(total, 1),
         "final":           final,
         "dynamic_weights": dyn_w,
@@ -959,7 +972,7 @@ def get_portfolio_lv1(portfolio, batch_data=None):
             else:
                 zs, _  = get_z_and_price(stock["ticker"])
                 _, _, inds = get_sector_analysis(stock["ticker"])
-                nb, items  = get_news(stock["ticker"])
+                nb, items  = get_korean_news(stock["ticker"])
                 win, _ = calc_win_rate(zs, inds, nb,
                                        stock_ticker=stock["ticker"],
                                        news_items=items)
@@ -1330,6 +1343,80 @@ def simulate_portfolio_history(portfolio_snapshot):
         return None
 
 
+
+
+# ── 섹터 대비 상대 모멘텀 ────────────────────────────────────────────────────
+_SECTOR_ETF_MAP = {
+    "Technology": "XLK", "Semiconductor": "SOXX",
+    "Consumer Cyclical": "XLY", "Consumer Defensive": "XLP",
+    "Financial Services": "XLF", "Healthcare": "XLV",
+    "Industrials": "XLI", "Real Estate": "XLRE",
+    "Utilities": "XLU", "Basic Materials": "XLB",
+    "Communication Services": "XLC", "Energy": "XLE",
+    "Unknown": "SPY",
+}
+
+@st.cache_data(ttl=600)
+def get_relative_momentum(ticker, sector="Unknown"):
+    """
+    섹터 ETF 대비 상대 모멘텀.
+    종목이 섹터보다 강하게 오르면 양수, 약하면 음수.
+    반환: {
+        "rel_20": 20일 상대 수익률(%),
+        "rel_60": 60일 상대 수익률(%),
+        "sector_etf": 비교 ETF,
+        "label": "섹터 아웃퍼폼" / "섹터 언더퍼폼" / "비슷",
+        "score": -10 ~ +10점 (승률 보조 참고용)
+    }
+    """
+    try:
+        etf = _SECTOR_ETF_MAP.get(sector, "SPY")
+
+        # 종목 수익률
+        raw_stock = yf.download(ticker, period="3mo", interval="1d",
+                                progress=False, timeout=10)
+        stock_cl = _extract_close(raw_stock).dropna()
+        if len(stock_cl) < 21:
+            return {"rel_20": 0.0, "rel_60": 0.0, "sector_etf": etf,
+                    "label": "데이터 부족", "score": 0.0}
+
+        # ETF 수익률
+        raw_etf = yf.download(etf, period="3mo", interval="1d",
+                              progress=False, timeout=10)
+        etf_cl = _extract_close(raw_etf).dropna()
+        if len(etf_cl) < 21:
+            return {"rel_20": 0.0, "rel_60": 0.0, "sector_etf": etf,
+                    "label": "데이터 부족", "score": 0.0}
+
+        stock_20 = float((stock_cl.iloc[-1] / stock_cl.iloc[-21] - 1) * 100)
+        etf_20   = float((etf_cl.iloc[-1]   / etf_cl.iloc[-21]   - 1) * 100)
+        rel_20   = round(stock_20 - etf_20, 1)
+
+        stock_60 = float((stock_cl.iloc[-1] / stock_cl.iloc[0] - 1) * 100) if len(stock_cl) >= 60 else stock_20
+        etf_60   = float((etf_cl.iloc[-1]   / etf_cl.iloc[0]   - 1) * 100) if len(etf_cl)   >= 60 else etf_20
+        rel_60   = round(stock_60 - etf_60, 1)
+
+        # 라벨 결정 (20일 기준)
+        if rel_20 > 5:    label = f"섹터({etf}) 대비 강세 💪"
+        elif rel_20 > 1:  label = f"섹터({etf}) 소폭 아웃퍼폼"
+        elif rel_20 < -5: label = f"섹터({etf}) 대비 약세 ⚠"
+        elif rel_20 < -1: label = f"섹터({etf}) 소폭 언더퍼폼"
+        else:             label = f"섹터({etf})와 비슷"
+
+        # 점수: -10 ~ +10 (참고용, 승률에 직접 반영하지 않음)
+        score = round(max(-10.0, min(10.0, rel_20 * 0.5 + rel_60 * 0.2)), 1)
+
+        return {
+            "rel_20":     rel_20,
+            "rel_60":     rel_60,
+            "sector_etf": etf,
+            "label":      label,
+            "score":      score,
+        }
+    except Exception:
+        return {"rel_20": 0.0, "rel_60": 0.0,
+                "sector_etf": "SPY", "label": "계산 불가", "score": 0.0}
+
 # ══════════════════════════════════════════════════════════════════════════════
 # ── 배치 로더: 메인 대시보드용 종목 일괄 계산 ─────────────────────────────────
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1347,7 +1434,8 @@ def get_batch_portfolio_data(tickers_tuple):
         try:
             zs, price      = get_z_and_price(ticker)
             sk, cfg, inds  = get_sector_analysis(ticker)
-            nb, items      = get_news(ticker)
+            # 한국어 뉴스로 단일화 (감쇠 적용 가능, 더 정확)
+            nb, items      = get_korean_news(ticker)
             win, breakdown = calc_win_rate(
                 zs, inds, nb, stock_ticker=ticker, news_items=items
             )
