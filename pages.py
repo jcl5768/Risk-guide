@@ -1041,8 +1041,6 @@ def render_detail_page():
                 margin=dict(t=10, b=4, l=0, r=50),
                 height=240,
                 hovermode="x unified",
-                dragmode="zoom",        # 드래그 = 범위 선택 줌
-                doubleclick="reset",    # 더블탭/더블클릭 = 전체 범위로 리셋(축소)
             )
             # scrollZoom: 핀치로 확대·축소, doubleclick으로 원상복구
             _chart_cfg = {
