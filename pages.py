@@ -342,15 +342,25 @@ def render_main_page():
             'padding:48px;text-align:center;">'
             '<div style="font-size:36px;margin-bottom:10px;">📭</div>'
             '<div style="font-size:16px;font-weight:600;color:#374151;margin-bottom:6px;">아직 종목이 없습니다</div>'
-            '<div style="font-size:13px;color:#9CA3AF;">왼쪽 사이드바에서 <b>➕ 종목 추가</b>를 눌러주세요.</div>'
+            '<div style="font-size:13px;color:#9CA3AF;">아래 버튼을 눌러 첫 종목을 추가해보세요.</div>'
             '<div style="font-size:11px;color:#D1D5DB;margin-top:8px;">예시: AAPL · TSLA · NVDA · XOM · JPM</div>'
             '</div>',
             unsafe_allow_html=True
         )
-        if st.button("➕ 종목 추가하기", use_container_width=True, key="empty_add_btn"):
-            st.session_state.show_add = True
+        if st.button("➕ 종목 추가하기", use_container_width=True, key="empty_add_btn", type="primary"):
+            st.session_state.show_add   = True
             st.session_state.open_sidebar = True
             st.rerun()
+
+        # 버튼 클릭 후 show_add가 켜진 상태면 메인화면에서 바로 검색창 표시
+        if st.session_state.get('show_add'):
+            st.markdown('---')
+            st.markdown(
+                '<div style="font-size:14px;font-weight:600;color:#1A1D23;margin-bottom:8px;">'
+                '🔍 종목 검색 — 사이드바에서도 추가할 수 있어요</div>',
+                unsafe_allow_html=True
+            )
+            st.info('← 왼쪽 사이드바의 검색창에서 종목을 추가하세요. (사이드바 상단 >> 버튼으로 열 수 있어요)')
         return
 
     st.markdown(
@@ -1289,10 +1299,11 @@ def render_detail_page():
                     f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
                     f'padding:14px 16px;margin-bottom:10px;">'
                     f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:10px;">'
-                    f'🎲 몬테카를로 시뮬레이션 (500회 · 현재가 ${mc_data["current"]:.2f})</div>'
+                    f'🎲 몬테카를로 시뮬레이션 (1,000회 · 현재가 ${mc_data["current"]:.2f})</div>'
                     f'{period_rows}'
                     f'<div style="font-size:10px;color:#B0B7C3;margin-top:8px;">'
-                    f'최대손실·최대수익은 95% 신뢰구간 기준 · 과거 변동성 기반 참고치</div>'
+                    f'최대손실·최대수익은 95% 신뢰구간 기준 · 과거 변동성 기반 참고치<br>'
+                    f'⚠ 과거 1년 변동성 기준 계산 → 장기 역사적 상승 추세는 미반영. 실제보다 보수적으로 나올 수 있음</div>'
                     f'</div>',
                     unsafe_allow_html=True
                 )
