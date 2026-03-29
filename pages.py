@@ -266,7 +266,7 @@ def render_main_page():
     if portfolio:
         fg_score, fg_label, fg_clr = get_fear_greed()
         with st.spinner("Lv.1 분석 중..."):
-            avg_win, w_icon, w_label, w_clr, w_summary = get_portfolio_lv1(portfolio, _batch)
+            avg_win, w_icon, w_label, w_clr, w_summary = get_portfolio_lv1(portfolio)
         st.markdown(
             f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
             f'padding:14px 18px;margin-bottom:16px;">'
