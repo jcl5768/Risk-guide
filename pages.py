@@ -1188,11 +1188,24 @@ def render_detail_page():
             news_adj      = breakdown.get("news_bonus", 0)
             pos_score     = breakdown.get("position_score", 0)
 
+            mom_score  = breakdown.get("momentum_score", 0.0)
+            mom_meta   = breakdown.get("momentum_meta", {})
+            mom_offset = breakdown.get("momentum_offset", 0.0)
+            mom_clr    = "#059669" if mom_score > 0 else "#DC2626" if mom_score < 0 else "#6B7280"
+            mom_vol    = mom_meta.get("vol_label", "")
+            mom_high   = mom_meta.get("high_label", "")
+            mom_20d    = mom_meta.get("mom_20", 0.0)
+            mom_60d    = mom_meta.get("mom_60", 0.0)
+            mom_detail = f"20일 {mom_20d:+.1f}% / 60일 {mom_60d:+.1f}%"
+            if mom_vol:    mom_detail += f" · 거래량 {mom_vol}"
+            if mom_high:   mom_detail += f" · {mom_high}"
+
             lv2_rows = ""
             for lbl, val, c in [
                 ("📍 가격 위치 (1년 %ile)", f"{breakdown.get('percentile',50):.0f}%ile → {pos_score:+.1f}점", zcolor(zs)),
                 ("📡 거시 환경 (동적 가중Z)", f"{weighted_z:+.3f}σ → {macro_contrib}%p", zcolor(weighted_z)),
                 ("📰 뉴스 감성 (감쇠 적용)", f"{news_adj:+.1f}점", "#059669" if news_adj >= 0 else "#DC2626"),
+                ("🚀 모멘텀 (추세+거래량+신고가)", f"{mom_score:+.1f}점", mom_clr),
             ]:
                 lv2_rows += (
                     f'<div style="display:flex;justify-content:space-between;align-items:center;'
@@ -1215,7 +1228,10 @@ def render_detail_page():
                 f'③ <b>뉴스 감성</b>: 최근 뉴스의 긍정/부정 비율 (오래된 뉴스는 감쇠 적용)</div>'
                 f'<div style="font-size:12px;color:#6B7280;margin-bottom:12px;">'
                 f'승률 <b style="color:{sv_};">{fw:.0f}%</b> = '
-                f'기본(50) + 가격위치({pos_score:+.1f}) + 거시환경({macro_contrib}%p) + 뉴스({news_adj:+.1f})</div>'
+                f'기본(50) + 가격위치({pos_score:+.1f}) + 거시환경({macro_contrib}%p) '
+                f'+ 뉴스({news_adj:+.1f}) + 모멘텀({mom_score:+.1f})</div>'
+                f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:8px;">'
+                f'모멘텀 상세: {mom_detail}</div>'
                 f'{lv2_rows}'
                 f'</div>',
                 unsafe_allow_html=True
