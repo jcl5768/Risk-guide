@@ -1134,6 +1134,11 @@ def render_detail_page():
                 f'<span class="lv1">Lv.1</span>'
                 f'<span style="font-size:12px;font-weight:600;color:#1A1D23;">직관 요약</span>'
                 f'</div>'
+                f'<div style="background:#EFF6FF;border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:#2563EB;line-height:1.6;">'
+                f'📌 <b>승률이란?</b> 현재 시장 환경에서 이 종목이 <b>앞으로 상승할 통계적 가능성</b>입니다.<br>'
+                f'주가 위치(1년 백분위) + 거시 지표 흐름 + 뉴스 감성을 종합해 계산하며,'
+                f' <b>오늘 이 순간 기준의 확률</b>입니다. 내일 주가를 예측하는 게 아니라,'
+                f' 지금 매수했을 때 유리한 환경인지 불리한 환경인지를 나타냅니다.</div>'
                 # 날씨
                 f'<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">'
                 f'<div style="font-size:40px;">{w_icon}</div>'
@@ -1193,6 +1198,11 @@ def render_detail_page():
                 f'<span class="lv2">Lv.2</span>'
                 f'<span style="font-size:12px;font-weight:600;color:#1A1D23;">분석 근거</span>'
                 f'</div>'
+                f'<div style="background:#FFF7ED;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#92400E;line-height:1.6;">'
+                f'📌 <b>Lv.2는 승률을 3가지 근거로 분해</b>해서 보여줍니다.<br>'
+                f'① <b>가격 위치</b>: 현재가가 1년 중 어느 위치인지 (낮을수록 저점 매수 유리)<br>'
+                f'② <b>거시 환경</b>: 금리·달러·VIX 등 시장 지표들이 이 종목에 유리한지 불리한지<br>'
+                f'③ <b>뉴스 감성</b>: 최근 뉴스의 긍정/부정 비율 (오래된 뉴스는 감쇠 적용)</div>'
                 f'<div style="font-size:12px;color:#6B7280;margin-bottom:12px;">'
                 f'승률 <b style="color:{sv_};">{fw:.0f}%</b> = '
                 f'기본(50) + 가격위치({pos_score:+.1f}) + 거시환경({macro_contrib}%p) + 뉴스({news_adj:+.1f})</div>'
@@ -1432,10 +1442,12 @@ def render_detail_page():
             f'<span class="lv2">Lv.2</span>'
             f'<b style="font-size:13px;color:#1A1D23;margin-left:8px;">'
             f'{target} ↔ 거시 지표 60일 상관계수</b>'
-            f'<div style="font-size:11px;color:#6B7280;margin-top:4px;">'
-            f'범위: -1(역상관) ~ 0(무관) ~ +1(동조)<br>'
-            f'<span style="color:#059669;">초록</span>: 이론 방향 일치 &nbsp;'
-            f'<span style="color:#DC2626;">빨강</span>: 이론 역방향 (이상 신호)</div></div>',
+            f'<div style="font-size:11px;color:#6B7280;margin-top:6px;line-height:1.7;">'
+            f'📌 <b>상관 분석이란?</b> 이 종목의 주가가 각 거시 지표와 얼마나 같이 움직이는지를 수치로 나타냅니다.<br>'
+            f'예를 들어 나스닥(QQQ)과 상관계수 +0.8이면, 나스닥이 오를 때 이 종목도 같이 오를 가능성이 높다는 뜻입니다.<br>'
+            f'<b>범위: -1(완전 역방향) ~ 0(관계없음) ~ +1(완전 동조)</b> · 최근 60거래일(약 3개월) 기준<br>'
+            f'<span style="color:#059669;">초록</span>: 이론과 일치 (신뢰도 높음) &nbsp;'
+            f'<span style="color:#DC2626;">빨강</span>: 이론과 반대 (이상 신호, 주의 필요)</div></div>',
             unsafe_allow_html=True
         )
         with st.spinner("상관계수 계산 중..."):
@@ -1616,8 +1628,17 @@ def render_detail_page():
     with tab5:
         st.markdown(
             '<div style="background:#F8FAFF;border:1px solid #DBEAFE;border-radius:8px;'
-            'padding:10px 14px;margin-bottom:14px;font-size:12px;color:#6B7280;">'
-            '과거 2년 데이터 기준 · 20 거래일(약 1개월) 후 수익률 검증 · 참고용</div>',
+            'padding:14px 16px;margin-bottom:14px;font-size:12px;color:#374151;line-height:1.8;">'
+            '<b style="font-size:13px;color:#1A1D23;">🧪 백테스트란?</b><br>'
+            '이 앱의 승률 신호가 과거에 실제로 얼마나 맞았는지 검증하는 기능입니다.<br>'
+            '과거 2년치 데이터를 20 거래일(약 1개월) 간격으로 나눠, 각 시점에서 신호를 계산하고 '
+            '그로부터 <b>20 거래일 후의 실제 수익률</b>을 확인합니다.<br>'
+            '<span style="color:#059669;">● 매수 신호</span>: 승률 60% 이상일 때 &nbsp;'
+            '<span style="color:#DC2626;">● 리스크 신호</span>: 승률 45% 미만일 때<br>'
+            '<b>적중률</b>: 매수 신호 후 실제로 올랐던 비율 / 리스크 신호 후 실제로 내렸던 비율<br>'
+            '<b>샤프지수</b>: 수익률 대비 변동성 — 0.5 이상이면 신호 품질이 검증된 수준<br>'
+            '<span style="color:#9CA3AF;font-size:11px;">⚠ 과거 결과가 미래를 보장하지 않습니다. 참고 지표로만 활용하세요.</span>'
+            '</div>',
             unsafe_allow_html=True
         )
 
@@ -1633,18 +1654,21 @@ def render_detail_page():
             shp_clr  = "#059669" if bt["sharpe"]   >= 0.5 else "#D97706" if bt["sharpe"] >= 0 else "#DC2626"
             avg_clr  = "#059669" if bt["avg_ret_buy"] >= 0 else "#DC2626"
 
+            # KPI 카드 (레이블 + 부제목 + 수치)
+            kpi_items = [
+                ("매수 신호 적중률",   "신호 후 실제 상승한 비율",   f"{bt['buy_acc']}%",          buy_clr),
+                ("리스크 신호 적중률", "신호 후 실제 하락한 비율",   f"{bt['risk_acc']}%",         risk_clr),
+                ("매수 평균 수익",     "신호 후 1개월 평균 수익률",  f"{bt['avg_ret_buy']:+.1f}%", avg_clr),
+                ("샤프지수(근사)",     "0.5↑ 우수 · 0↑ 보통",       f"{bt['sharpe']}",            shp_clr),
+            ]
             kpi_c = st.columns(4)
-            for col, (lbl, val, clr) in zip(kpi_c, [
-                ("매수 신호 적중률", f"{bt['buy_acc']}%",  buy_clr),
-                ("리스크 신호 적중률", f"{bt['risk_acc']}%", risk_clr),
-                ("매수 평균 수익",  f"{bt['avg_ret_buy']:+.1f}%", avg_clr),
-                ("샤프지수(근사)", f"{bt['sharpe']}",      shp_clr),
-            ]):
+            for col, (lbl, sub, val, clr) in zip(kpi_c, kpi_items):
                 col.markdown(
                     f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;'
                     f'padding:10px;text-align:center;">'
                     f'<div style="font-size:9px;color:#9CA3AF;text-transform:uppercase;'
-                    f'letter-spacing:0.5px;margin-bottom:4px;">{lbl}</div>'
+                    f'letter-spacing:0.5px;margin-bottom:2px;">{lbl}</div>'
+                    f'<div style="font-size:9px;color:#B0B7C3;margin-bottom:4px;">{sub}</div>'
                     f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:18px;'
                     f'font-weight:700;color:{clr};">{val}</div></div>',
                     unsafe_allow_html=True
@@ -1653,8 +1677,8 @@ def render_detail_page():
             # ── 신호 분포 요약 ────────────────────────────────────────
             st.markdown(
                 f'<div style="font-size:11px;color:#9CA3AF;text-align:center;margin:8px 0 14px;">'
-                f'총 {bt["total"]}개 신호 검증 · 매수 {bt["buy_count"]}회 · '
-                f'리스크 {bt["risk_count"]}회</div>',
+                f'과거 2년 · 총 {bt["total"]}번 신호 발생 '
+                f'(매수 {bt["buy_count"]}회 · 리스크 {bt["risk_count"]}회 · 각 신호 후 1개월 수익률 측정)</div>',
                 unsafe_allow_html=True
             )
 
