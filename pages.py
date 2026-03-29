@@ -992,21 +992,23 @@ def render_detail_page():
             # ── 평단가 수평선 ─────────────────────────────────────────────
             avg_p = si.get("avg_price", 0)
             if avg_p and avg_p > 0 and not df.empty:
-                # 평단 대비 현재 위치에 따라 색상 결정
                 _avg_clr = "#059669" if price >= avg_p else "#DC2626"
+                # annotation 분리: add_hline은 선만, 레이블은 add_annotation으로
                 chart_fig.add_hline(
                     y=avg_p,
                     line=dict(color=_avg_clr, width=1.5, dash="dot"),
-                    annotation=dict(
-                        text=f"평단 ${avg_p:.2f}",
-                        font=dict(size=10, color=_avg_clr),
-                        bgcolor="rgba(255,255,255,0.85)",
-                        bordercolor=_avg_clr,
-                        borderwidth=1,
-                        borderpad=3,
-                        xref="paper", x=0.01,
-                        showarrow=False,
-                    ),
+                )
+                chart_fig.add_annotation(
+                    x=0, xref="paper",
+                    y=avg_p, yref="y",
+                    text=f"평단 ${avg_p:.2f}",
+                    showarrow=False,
+                    font=dict(size=10, color=_avg_clr),
+                    bgcolor="rgba(255,255,255,0.85)",
+                    bordercolor=_avg_clr,
+                    borderwidth=1,
+                    borderpad=3,
+                    xanchor="left",
                 )
 
             chart_fig.update_layout(
