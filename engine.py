@@ -89,7 +89,7 @@ PERIOD_MAP = {
 PERIOD_LABELS = ["1개월", "3개월", "1년", "5년"]
 
 @st.cache_data(ttl=120)
-def get_chart_data(ticker, period_key="1달"):
+def get_chart_data(ticker, period_key="1개월"):
     period, interval = PERIOD_MAP.get(period_key, ("1mo","1d"))
     try:
         raw = yf.download(ticker, period=period, interval=interval, progress=False, timeout=10)
@@ -307,7 +307,7 @@ def _percentile_score(ticker):
     return score, pct
 
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=600)
 def _get_market_regime():
     """
     시장 국면 분류 (겉으로 표시 안 함 — 승률 보정에만 사용)
@@ -800,9 +800,10 @@ def get_fear_greed():
         return 50, "중립", "#D97706"
 
 
-def get_portfolio_lv1(portfolio):
+def get_portfolio_lv1(portfolio, batch_data=None):
     """
     Lv.1 — 포트폴리오 전체 가중 평균 승률 + 날씨 신호등
+    batch_data: get_batch_portfolio_data() 결과를 넘기면 중복 API 호출 없이 재사용.
     반환: (weighted_win, weather_icon, weather_label, weather_clr, summary_text)
     """
     if not portfolio:
@@ -815,11 +816,18 @@ def get_portfolio_lv1(portfolio):
 
     for stock in portfolio:
         try:
-            zs, price    = get_z_and_price(stock["ticker"])
-            _, _, inds   = get_sector_analysis(stock["ticker"])
-            nb, items    = get_news(stock["ticker"])
-            win, _       = calc_win_rate(zs, inds, nb, stock_ticker=stock["ticker"], news_items=items)
-            w            = stock.get("weight", 10)
+            # 배치 데이터가 있으면 재사용, 없으면 개별 호출
+            if batch_data and stock["ticker"] in batch_data:
+                d   = batch_data[stock["ticker"]]
+                win = d.get("win", 50.0)
+            else:
+                zs, _  = get_z_and_price(stock["ticker"])
+                _, _, inds = get_sector_analysis(stock["ticker"])
+                nb, items  = get_news(stock["ticker"])
+                win, _ = calc_win_rate(zs, inds, nb,
+                                       stock_ticker=stock["ticker"],
+                                       news_items=items)
+            w = stock.get("weight", 10)
             weighted_win += win * w
             total_w      += w
             if win < worst_win:
@@ -835,15 +843,15 @@ def get_portfolio_lv1(portfolio):
 
     if avg_win >= 65:
         icon, label, clr = "☀️", "맑음",   "#059669"
-        summary = f"포트폴리오 전반이 우호적입니다. 비중을 유지하세요."
+        summary = "포트폴리오 전반이 우호적입니다. 비중을 유지하세요."
     elif avg_win >= 50:
         icon, label, clr = "⛅", "구름",   "#D97706"
-        summary = f"전반적으로 중립입니다."
+        summary = "전반적으로 중립입니다."
         if worst_ticker:
-            summary += f" {worst_ticker} 를 주시하세요."
+            summary += f" {worst_ticker}를 주시하세요."
     else:
         icon, label, clr = "🌧️", "비",    "#DC2626"
-        summary = f"리스크 경고 구간입니다."
+        summary = "리스크 경고 구간입니다."
         if worst_ticker:
             summary += f" {worst_ticker}({worst_win:.0f}%)가 가장 취약합니다."
 
