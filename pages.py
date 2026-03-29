@@ -12,6 +12,7 @@ from engine import (
     calc_var, calc_portfolio_var, calc_monte_carlo, calc_bayesian_update,
     get_portfolio_correlation_matrix, simulate_portfolio_history,
     get_batch_portfolio_data,
+    get_relative_momentum,
 )
 
 
@@ -229,8 +230,8 @@ def _action_plan(fw):
 def render_main_page():
     st.markdown(
         '<div style="margin-bottom:20px;">'
-        '<h2 style="font-size:22px;font-weight:700;color:#1A1D23;margin:0;">📊 포트폴리오 현황</h2>'
-        '<p style="font-size:13px;color:#6B7280;margin:4px 0 0;">섹터 드라이버 가중 Z-Score 기반 승률 분석</p>'
+        '<h2 style="font-size:22px;font-weight:700;color:#1A1D23;margin:0;">🔭 Signum — 포트폴리오 현황</h2>'
+        '<p style="font-size:13px;color:#6B7280;margin:4px 0 0;">시장 신호 기반 종목 분석 · Signum</p>'
         '</div>',
         unsafe_allow_html=True
     )
@@ -815,6 +816,8 @@ def render_detail_page():
         f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:2px;">상승 가능성</div>'
         f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:44px;'
         f'font-weight:700;color:{sv_};line-height:1;">{fw:.1f}%</div>'
+    f'<div style="font-size:11px;color:#9CA3AF;margin-top:2px;">'
+    f'±{breakdown.get("confidence_range", 8.0):.0f}%p 불확실성 범위</div>'
         f'<div style="font-size:11px;color:#6B7280;margin-top:4px;">'
         f'{price_pos} · 수익률 '
         f'<span style="color:{pc};font-weight:600;">{("+" if pnl>=0 else "")}{pnl:.1f}%</span>'
@@ -891,6 +894,26 @@ def render_detail_page():
         f'<div style="font-size:10px;font-weight:700;color:#059669;margin-bottom:4px;">AI 요약</div>'
         f'{ai_items}'
         f'</div>',
+        unsafe_allow_html=True
+    )
+
+    # ── 섹터 대비 상대 모멘텀 카드 ──────────────────────────────────────
+    with st.spinner(''):
+        _rel = get_relative_momentum(target, sk)
+    _rel_clr = '#059669' if _rel['rel_20'] > 1 else '#DC2626' if _rel['rel_20'] < -1 else '#6B7280'
+    _rel_bg  = '#F0FDF4' if _rel['rel_20'] > 1 else '#FEF2F2' if _rel['rel_20'] < -1 else '#F9FAFB'
+    st.markdown(
+        f'<div style="background:{_rel_bg};border:1px solid #E8EAED;border-radius:8px;'
+        f'padding:10px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">'
+        f'<div>'
+        f'<div style="font-size:10px;font-weight:700;color:#6B7280;margin-bottom:2px;">📊 섹터 상대 강도</div>'
+        f'<div style="font-size:12px;color:{_rel_clr};font-weight:600;">{_rel["label"]}</div>'
+        f'</div>'
+        f'<div style="text-align:right;">'
+        f'<div style="font-size:14px;font-weight:700;color:{_rel_clr};">'
+        f'{"+" if _rel["rel_20"]>=0 else ""}{_rel["rel_20"]}%</div>'
+        f'<div style="font-size:10px;color:#9CA3AF;">20일 상대수익률</div>'
+        f'</div></div>',
         unsafe_allow_html=True
     )
 
@@ -1206,6 +1229,7 @@ def render_detail_page():
                 ("📡 거시 환경 (동적 가중Z)", f"{weighted_z:+.3f}σ → {macro_contrib}%p", zcolor(weighted_z)),
                 ("📰 뉴스 감성 (감쇠 적용)", f"{news_adj:+.1f}점", "#059669" if news_adj >= 0 else "#DC2626"),
                 ("🚀 모멘텀 (추세+거래량+신고가)", f"{mom_score:+.1f}점", mom_clr),
+                ("📊 섹터 상대 강도", f"{_rel["rel_20"]:+.1f}% (20일)", _rel_clr),
             ]:
                 lv2_rows += (
                     f'<div style="display:flex;justify-content:space-between;align-items:center;'
