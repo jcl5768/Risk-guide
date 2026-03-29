@@ -1246,15 +1246,22 @@ def render_detail_page():
                 # 기간별 행 먼저 조립
                 period_rows = (
                     f'<table style="width:100%;border-collapse:collapse;font-size:11px;">'
-                    f'<thead><tr>'
+                    f'<thead>'
+                    f'<tr><td colspan="5" style="padding:0 0 8px;font-size:10px;color:#6B7280;line-height:1.6;">'
+                    f'📌 <b>읽는 법</b> — 1,000번 무작위 시뮬레이션 결과:<br>'
+                    f'· <b style="color:#DC2626;">최악구간</b>: 하위 5% 시나리오를 제외한 가장 나쁜 결과 (95%는 이보다 낫다)<br>'
+                    f'· <b style="color:#D97706;">중간값</b>: 딱 중간에 해당하는 결과 (절반은 이보다 낫고 절반은 나쁘다)<br>'
+                    f'· <b style="color:#059669;">최고구간</b>: 상위 5% 시나리오를 제외한 가장 좋은 결과 (95%는 이보다 못하다)<br>'
+                    f'· <b>상승확률</b>: 1,000번 중 현재가보다 <b>높게 끝난 횟수 비율</b> (최대손실·수익과 무관)</td></tr>'
+                    f'<tr>'
                     f'<th style="padding:6px 8px;text-align:left;color:#9CA3AF;font-weight:600;'
                     f'border-bottom:1px solid #E8EAED;">기간</th>'
                     f'<th style="padding:6px 8px;text-align:center;color:#DC2626;font-weight:600;'
-                    f'border-bottom:1px solid #E8EAED;">최대손실(95%)</th>'
+                    f'border-bottom:1px solid #E8EAED;">최악구간</th>'
                     f'<th style="padding:6px 8px;text-align:center;color:#D97706;font-weight:600;'
-                    f'border-bottom:1px solid #E8EAED;">중립(50%)</th>'
+                    f'border-bottom:1px solid #E8EAED;">중간값</th>'
                     f'<th style="padding:6px 8px;text-align:center;color:#059669;font-weight:600;'
-                    f'border-bottom:1px solid #E8EAED;">최대수익(95%)</th>'
+                    f'border-bottom:1px solid #E8EAED;">최고구간</th>'
                     f'<th style="padding:6px 8px;text-align:center;color:#6B7280;font-weight:600;'
                     f'border-bottom:1px solid #E8EAED;">상승확률</th>'
                     f'</tr></thead><tbody>'
@@ -1446,8 +1453,10 @@ def render_detail_page():
             f'📌 <b>상관 분석이란?</b> 이 종목의 주가가 각 거시 지표와 얼마나 같이 움직이는지를 수치로 나타냅니다.<br>'
             f'예를 들어 나스닥(QQQ)과 상관계수 +0.8이면, 나스닥이 오를 때 이 종목도 같이 오를 가능성이 높다는 뜻입니다.<br>'
             f'<b>범위: -1(완전 역방향) ~ 0(관계없음) ~ +1(완전 동조)</b> · 최근 60거래일(약 3개월) 기준<br>'
-            f'<span style="color:#059669;">초록</span>: 이론과 일치 (신뢰도 높음) &nbsp;'
-            f'<span style="color:#DC2626;">빨강</span>: 이론과 반대 (이상 신호, 주의 필요)</div></div>',
+            f'<span style="color:#059669;">● 초록</span>: 이론과 일치 — 예상대로 움직이는 중. 크게 신경 안 써도 됩니다.<br>'
+            f'<span style="color:#DC2626;">● 빨강</span>: 이론과 반대 — 예상과 다르게 움직이는 중. <b>이때가 주의 신호</b>입니다.<br>'
+            f'<span style="color:#9CA3AF;">예: 금리가 오르면 기술주에 악재인데, 실제로는 같이 오르고 있다면 빨강 표시.</span>'
+            f'</div></div>',
             unsafe_allow_html=True
         )
         with st.spinner("상관계수 계산 중..."):
@@ -1656,10 +1665,10 @@ def render_detail_page():
 
             # KPI 카드 (레이블 + 부제목 + 수치)
             kpi_items = [
-                ("매수 신호 적중률",   "신호 후 실제 상승한 비율",   f"{bt['buy_acc']}%",          buy_clr),
-                ("리스크 신호 적중률", "신호 후 실제 하락한 비율",   f"{bt['risk_acc']}%",         risk_clr),
-                ("매수 평균 수익",     "신호 후 1개월 평균 수익률",  f"{bt['avg_ret_buy']:+.1f}%", avg_clr),
-                ("샤프지수(근사)",     "0.5↑ 우수 · 0↑ 보통",       f"{bt['sharpe']}",            shp_clr),
+                ("매수 신호 적중률",   "승률 60%↑ 신호 후 1개월 실제 상승한 비율", f"{bt['buy_acc']}%",          buy_clr),
+                ("리스크 신호 적중률", "승률 45%↓ 신호 후 1개월 실제 하락한 비율", f"{bt['risk_acc']}%",         risk_clr),
+                ("매수 평균 수익",     "매수 신호 발생 후 1개월 평균 수익률",       f"{bt['avg_ret_buy']:+.1f}%", avg_clr),
+                ("샤프지수(근사)",     "0.5↑ 우수 · 0↑ 보통",                      f"{bt['sharpe']}",            shp_clr),
             ]
             kpi_c = st.columns(4)
             for col, (lbl, sub, val, clr) in zip(kpi_c, kpi_items):
@@ -1742,10 +1751,15 @@ def render_detail_page():
             # ── 해석 안내 ─────────────────────────────────────────────
             st.markdown(
                 '<div style="background:#F9FAFB;border:1px solid #E8EAED;border-radius:8px;'
-                'padding:10px 14px;margin-top:10px;font-size:11px;color:#9CA3AF;line-height:1.8;">'
-                '⚠ 백테스트는 과거 데이터 기반 참고 지표입니다. '
-                '과거 적중률이 미래 수익을 보장하지 않습니다.<br>'
-                '샤프지수 0.5 이상이면 신호 품질이 어느 정도 검증된 수준입니다.</div>',
+                'padding:12px 14px;margin-top:10px;font-size:11px;color:#374151;line-height:1.8;">'
+                '<b>❓ 승률 vs 적중률 — 뭐가 다른가요?</b><br>'
+                '· <b>현재 승률</b> = 지금 이 순간의 환경 점수. 예보와 같음.<br>'
+                '· <b>매수 신호 적중률</b> = 과거에 승률이 60% 이상 나왔을 때, '
+                '실제로 1개월 뒤 주가가 오른 비율. 이 앱의 성적표.<br>'
+                '예: 현재 승률 35% → 지금은 불리한 환경. '
+                '적중률 40% → 과거 매수 신호의 신뢰도는 40%였다는 뜻.<br>'
+                '<span style="color:#9CA3AF;">⚠ 과거 적중률이 미래 수익을 보장하지 않습니다. 참고 지표로만 활용하세요.</span>'
+                '</div>',
                 unsafe_allow_html=True
             )
 
