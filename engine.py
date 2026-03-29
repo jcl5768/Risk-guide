@@ -331,6 +331,116 @@ def _get_market_regime():
         return 0, 0.0
 
 
+
+
+# ── 모멘텀 팩터 (추세 지속성 보정) ───────────────────────────────────────────
+@st.cache_data(ttl=600)
+def _get_momentum_score(ticker):
+    """
+    모멘텀 팩터: 3단계 구조
+      ① 기본 모멘텀 점수 — 20일/60일 수익률 기반 (-12 ~ +12점)
+      ② 거래량 신뢰도 배율 — 거래량 폭발 동반 시 강화, 없으면 약화
+      ③ 신고가 근접 여부 — 52주 신고가 돌파 + 거래량이면 추세 지속 가능성 보너스
+
+    NVDA 2024처럼 가격+거래량+신고가 3박자 갖춘 종목 → 최대 +15점
+    거래량 없이 가격만 오른 종목 → 절반 이하로 감쇠
+    과열 후 거래량 급감 구간 → 오히려 패널티
+    """
+    try:
+        raw = yf.download(ticker, period="1y", interval="1d", progress=False, timeout=10)
+        if raw is None or raw.empty:
+            return 0.0, {}
+
+        closes = _extract_close(raw).dropna()
+        if len(closes) < 60:
+            return 0.0, {}
+
+        # ── ① 기본 모멘텀: 20일·60일 수익률 ─────────────────────────────
+        mom_20 = float((closes.iloc[-1] / closes.iloc[-21] - 1) * 100)  if len(closes) >= 21 else 0.0
+        mom_60 = float((closes.iloc[-1] / closes.iloc[-61] - 1) * 100)  if len(closes) >= 61 else 0.0
+
+        # 20일 모멘텀: -10% 이하 → -8점, +10% 이상 → +8점 (선형 보간)
+        m20_score = round(max(-8.0, min(8.0, mom_20 * 0.6)), 1)
+        # 60일 모멘텀: -20% 이하 → -6점, +20% 이상 → +6점
+        m60_score = round(max(-6.0, min(6.0, mom_60 * 0.25)), 1)
+        base_score = m20_score + m60_score   # -14 ~ +14
+
+        # ── ② 거래량 신뢰도 배율 ─────────────────────────────────────────
+        vol_multiplier = 1.0  # 기본 배율
+        vol_label      = "보통"
+
+        if "Volume" in raw.columns or (hasattr(raw.columns, "get_level_values") and
+                                        "Volume" in raw.columns.get_level_values(0)):
+            try:
+                if isinstance(raw.columns, pd.MultiIndex):
+                    vol_series = raw["Volume"].iloc[:, 0].dropna()
+                else:
+                    vol_series = raw["Volume"].dropna()
+
+                if len(vol_series) >= 21:
+                    vol_ma20  = float(vol_series.tail(21).mean())    # 20일 평균 거래량
+                    vol_recent = float(vol_series.tail(5).mean())    # 최근 5일 평균
+                    vol_ratio  = vol_recent / vol_ma20 if vol_ma20 > 0 else 1.0
+
+                    if vol_ratio >= 2.0:
+                        vol_multiplier = 1.5   # 거래량 2배 이상 폭발 → 신뢰도 강화
+                        vol_label      = "폭발 🔥"
+                    elif vol_ratio >= 1.3:
+                        vol_multiplier = 1.2   # 거래량 증가 → 소폭 강화
+                        vol_label      = "증가 ↑"
+                    elif vol_ratio < 0.5:
+                        vol_multiplier = 0.4   # 거래량 급감 → 신뢰도 약화
+                        vol_label      = "급감 ↓"
+                    elif vol_ratio < 0.7:
+                        vol_multiplier = 0.7   # 거래량 감소
+                        vol_label      = "감소"
+            except Exception:
+                pass
+
+        # ── ③ 52주 신고가 근접 보너스 ────────────────────────────────────
+        high_bonus = 0.0
+        high_label = ""
+
+        high_52w = float(closes.max())
+        cur_price = float(closes.iloc[-1])
+        pct_from_high = (cur_price - high_52w) / high_52w * 100  # 신고가 대비 %
+
+        if pct_from_high >= -3.0:          # 52주 신고가 97% 이상 (신고가 근처 or 돌파)
+            if vol_multiplier >= 1.2:      # 거래량 동반 시에만 보너스
+                high_bonus = 3.0
+                high_label = "신고가 돌파+거래량 📈"
+            else:
+                high_bonus = 1.0           # 거래량 없으면 소폭만
+                high_label = "신고가 근처"
+        elif pct_from_high >= -10.0:       # 신고가 대비 -10% 이내
+            high_bonus = 1.0
+            high_label = "신고가 근처"
+        elif pct_from_high <= -40.0:       # 신고가 대비 -40% 이하 (깊은 하락)
+            high_bonus = -1.0
+            high_label = "52주 저점권"
+
+        # ── 최종 합산: 거래량 배율 × 기본 모멘텀 + 신고가 보너스 ─────────
+        raw_score  = base_score * vol_multiplier + high_bonus
+        # 클램프: -15 ~ +15
+        final_score = round(max(-15.0, min(15.0, raw_score)), 1)
+
+        meta = {
+            "mom_20":          round(mom_20, 1),
+            "mom_60":          round(mom_60, 1),
+            "m20_score":       m20_score,
+            "m60_score":       m60_score,
+            "vol_multiplier":  round(vol_multiplier, 2),
+            "vol_label":       vol_label,
+            "high_bonus":      high_bonus,
+            "high_label":      high_label,
+            "pct_from_high":   round(pct_from_high, 1),
+            "final":           final_score,
+        }
+        return final_score, meta
+
+    except Exception:
+        return 0.0, {}
+
 # ── 핵심 승률 계산 ────────────────────────────────────────────────────────────
 def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items=None):
     # 1. 주가 위치 (Percentile)
@@ -365,13 +475,35 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
     else:
         news_adj = round(news_bonus * 0.5, 1)
 
-    # 4. 시장 국면 보정 (조용히 — 겉으로 표시 안 함)
-    #    하락장에서 FN(위험 과소평가) 방지 목적
+    # 4. 시장 국면 보정
     _, regime_adj = _get_market_regime()
     regime_adj = round(regime_adj, 1)
 
-    # 5. 합산
-    total = 50.0 + position_score + macro_score + news_adj + regime_adj
+    # 5. 모멘텀 팩터 (추세 지속성)
+    #    거래량·신고가로 신뢰도 보정된 모멘텀 점수 (-15 ~ +15)
+    if stock_ticker:
+        try:
+            momentum_score, momentum_meta = _get_momentum_score(stock_ticker)
+        except Exception:
+            momentum_score = 0.0
+            momentum_meta  = {}
+    else:
+        momentum_score = 0.0
+        momentum_meta  = {}
+
+    # 6. 합산
+    # position_score(가격위치)가 모멘텀과 상충할 수 있어 가중치 조정:
+    # 강한 모멘텀일수록 position_score의 하방 패널티를 일부 상쇄
+    momentum_offset = 0.0
+    if momentum_score > 5.0 and position_score < 0:
+        # 강한 상승 모멘텀이면 고점 패널티를 최대 50% 완화
+        momentum_offset = round(min(abs(position_score) * 0.5, momentum_score * 0.3), 1)
+    elif momentum_score < -5.0 and position_score > 0:
+        # 강한 하락 모멘텀이면 저점 보너스를 최대 50% 축소
+        momentum_offset = round(max(-abs(position_score) * 0.5, momentum_score * 0.3), 1)
+
+    total = (50.0 + position_score + momentum_offset
+             + macro_score + news_adj + regime_adj + momentum_score)
     final = round(max(5.0, min(95.0, total)), 1)
 
     return final, {
@@ -383,6 +515,9 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
         "news_bonus":      news_adj,
         "news_raw":        news_bonus,
         "regime_adj":      regime_adj,
+        "momentum_score":  momentum_score,
+        "momentum_meta":   momentum_meta,
+        "momentum_offset": momentum_offset,
         "total_raw":       round(total, 1),
         "final":           final,
         "dynamic_weights": dyn_w,
@@ -392,7 +527,8 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
             f"(가격{percentile:.0f}%ile) "
             f"{'+' if macro_score>=0 else ''}{macro_score}(거시Z) "
             f"{'+' if news_adj>=0 else ''}{news_adj}(뉴스) "
-            f"{'+' if regime_adj>=0 else ''}{regime_adj}(국면) = {final}%"
+            f"{'+' if regime_adj>=0 else ''}{regime_adj}(국면) "
+            f"{'+' if momentum_score>=0 else ''}{momentum_score}(모멘텀) = {final}%"
         ),
     }
 
