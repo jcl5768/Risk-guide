@@ -253,11 +253,6 @@ with st.sidebar:
     with st.expander("⚙️ 설정"):
         # ── 투자 모드 선택 ──────────────────────────────────────────
         mode_options = ["단기", "스윙", "장기"]
-        mode_desc = {
-            "단기": "수일~수주 · 타점·리스크 경고 중심",
-            "스윙": "수주~수개월 · 균형 분석",
-            "장기": "수개월~수년 · 모멘텀·추세 중심",
-        }
         st.markdown(
             '<div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">'
             '📐 투자 기간 모드</div>',
@@ -275,9 +270,23 @@ with st.sidebar:
         if selected_mode != st.session_state.get("invest_mode", "단기"):
             st.session_state.invest_mode = selected_mode
             st.rerun()
+
+        # 모드별 쉬운 설명
+        _m = st.session_state.get("invest_mode", "단기")
+        if _m == "단기":
+            _desc = "📅 <b>단기</b> — 지금 이 타점이 싼가 비싼가에 집중<br>고점 패널티 강함 · 하락장 경고 강함"
+            _clr  = "#374151"
+        elif _m == "스윙":
+            _desc = "📆 <b>스윙</b> — 타점 + 추세를 균형 있게 봄<br>고점 패널티 약간 완화 · 모멘텀 소폭 강화"
+            _clr  = "#2563EB"
+        else:
+            _desc = "🗓 <b>장기</b> — 지금 비싸도 추세가 강하면 OK<br>고점 패널티 절반 · 하락장 경고 없음 · 모멘텀 1.5배"
+            _clr  = "#059669"
+
         st.markdown(
-            f'<div style="font-size:10px;color:#6B7280;padding:2px 0 10px;">'
-            f'{mode_desc[st.session_state.get("invest_mode","단기")]}</div>',
+            f'<div style="background:#F9FAFB;border-left:3px solid {_clr};'
+            f'border-radius:0 6px 6px 0;padding:8px 12px;margin-bottom:10px;'
+            f'font-size:11px;color:#374151;line-height:1.7;">{_desc}</div>',
             unsafe_allow_html=True
         )
         st.markdown("---")
