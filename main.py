@@ -21,6 +21,7 @@ def init_session():
     if "show_add"      not in st.session_state: st.session_state.show_add      = False
     if "chart_period"  not in st.session_state: st.session_state.chart_period  = "1개월"
     if "open_sidebar"  not in st.session_state: st.session_state.open_sidebar  = False
+    if "invest_mode"   not in st.session_state: st.session_state.invest_mode   = "단기"
 
 init_session()
 
@@ -250,6 +251,37 @@ with st.sidebar:
 
     st.markdown("---")
     with st.expander("⚙️ 설정"):
+        # ── 투자 모드 선택 ──────────────────────────────────────────
+        mode_options = ["단기", "스윙", "장기"]
+        mode_desc = {
+            "단기": "수일~수주 · 타점·리스크 경고 중심",
+            "스윙": "수주~수개월 · 균형 분석",
+            "장기": "수개월~수년 · 모멘텀·추세 중심",
+        }
+        st.markdown(
+            '<div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">'
+            '📐 투자 기간 모드</div>',
+            unsafe_allow_html=True
+        )
+        cur_idx = mode_options.index(st.session_state.get("invest_mode", "단기"))
+        selected_mode = st.radio(
+            "투자 모드",
+            options=mode_options,
+            index=cur_idx,
+            horizontal=True,
+            label_visibility="collapsed",
+            key="mode_radio"
+        )
+        if selected_mode != st.session_state.get("invest_mode", "단기"):
+            st.session_state.invest_mode = selected_mode
+            st.rerun()
+        st.markdown(
+            f'<div style="font-size:10px;color:#6B7280;padding:2px 0 10px;">'
+            f'{mode_desc[st.session_state.get("invest_mode","단기")]}</div>',
+            unsafe_allow_html=True
+        )
+        st.markdown("---")
+
         # ── 포트폴리오 저장 (인라인 방식) ───────────────────────────────
         if st.session_state.portfolio:
             portfolio_json = json.dumps(
