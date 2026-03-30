@@ -364,14 +364,14 @@ def render_main_page():
             st.info('← 왼쪽 사이드바의 검색창에서 종목을 추가하세요. (사이드바 상단 >> 버튼으로 열 수 있어요)')
         return
 
+    _imode = st.session_state.get('invest_mode', '단기')
+    _imode_desc = {'단기': '수일~수주 · 타점 중심', '스윙': '수주~수개월 · 균형', '장기': '수개월+ · 모멘텀 중심'}.get(_imode, '')
+    _imode_clr  = {'단기': '#374151', '스윙': '#2563EB', '장기': '#059669'}.get(_imode, '#374151')
     st.markdown(
         f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
-        f'<div style="background:#1A1D23;color:#FFFFFF;border-radius:6px;padding:3px 10px;'
-        f'font-size:11px;font-weight:700;">'
-        f'{st.session_state.get("invest_mode","단기")} 모드</div>'
-        f'<div style="font-size:11px;color:#9CA3AF;">'
-        f'{{"수일~수주 · 타점 중심" if st.session_state.get("invest_mode","단기")=="단기" else "수주~수개월 · 균형" if st.session_state.get("invest_mode","단기")=="스윙" else "수개월+ · 모멘텀 중심"}}'
-        f'</div></div>'
+        f'<div style="background:{_imode_clr};color:#FFFFFF;border-radius:6px;padding:3px 10px;'
+        f'font-size:11px;font-weight:700;">{_imode} 모드</div>'
+        f'<div style="font-size:11px;color:#9CA3AF;">{_imode_desc}</div></div>'
         '<div class="section-hdr">📈 보유 종목 분석 '
         '<span class="lv1" style="margin-left:6px;">Lv.1 / Lv.2</span></div>',
         unsafe_allow_html=True
