@@ -327,6 +327,66 @@ ETF_MAP = {
     "GTLB":"Technology",         # GitLab
     "U":"Technology",            # Unity Software
     "RBLX":"Communication Services", # Roblox
+
+    # ── 금융 SaaS / 기업용 소프트웨어
+    "INTU":"Technology",         # Intuit (인튜이트)
+    "NOW":"Technology",          # ServiceNow
+    "WDAY":"Technology",         # Workday
+    "HUBS":"Technology",         # HubSpot
+    "VEEV":"Healthcare",         # Veeva Systems
+    "TEAM":"Technology",         # Atlassian
+    "ZM":"Communication Services", # Zoom
+    "DOCU":"Technology",         # DocuSign
+    "BOX":"Technology",          # Box
+    "OKTA":"Technology",         # Okta
+
+    # ── 전통 대형주 추가
+    "BRK-B":"Financial Services",# Berkshire Hathaway
+    "UNP":"Industrials",         # Union Pacific
+    "CSX":"Industrials",         # CSX
+    "WM":"Industrials",          # Waste Management
+    "ECL":"Basic Materials",     # Ecolab
+    "APH":"Technology",          # Amphenol
+    "ITW":"Industrials",         # Illinois Tool Works
+    "PH":"Industrials",          # Parker-Hannifin
+    "GWW":"Industrials",         # W.W. Grainger
+    "ODFL":"Industrials",        # Old Dominion Freight
+
+    # ── 헬스케어 추가
+    "ISRG":"Healthcare",         # Intuitive Surgical
+    "SYK":"Healthcare",          # Stryker
+    "BSX":"Healthcare",          # Boston Scientific
+    "EW":"Healthcare",           # Edwards Lifesciences
+    "RMD":"Healthcare",          # ResMed
+    "DXCM":"Healthcare",         # DexCom
+    "PODD":"Healthcare",         # Insulet
+    "HOLX":"Healthcare",         # Hologic
+    "IDXX":"Healthcare",         # IDEXX Laboratories
+
+    # ── 소비재 추가
+    "LULU":"Consumer Cyclical",  # Lululemon
+    "RH":"Consumer Cyclical",    # RH (Restoration Hardware)
+    "BURL":"Consumer Cyclical",  # Burlington
+    "ROST":"Consumer Defensive", # Ross Stores
+    "DG":"Consumer Defensive",   # Dollar General
+    "DLTR":"Consumer Defensive", # Dollar Tree
+    "SFM":"Consumer Defensive",  # Sprouts Farmers Market
+    "ELF":"Consumer Defensive",  # e.l.f. Beauty
+
+    # ── 에너지 추가
+    "DVN":"Energy",              # Devon Energy
+    "FANG":"Energy",             # Diamondback Energy
+    "OXY":"Energy",              # Occidental Petroleum
+    "MRO":"Energy",              # Marathon Oil
+    "BKR":"Energy",              # Baker Hughes
+    "NOV":"Energy",              # NOV Inc
+
+    # ── 리츠 추가
+    "WELL":"Real Estate",        # Welltower
+    "DLR":"Real Estate",         # Digital Realty
+    "PSA":"Real Estate",         # Public Storage
+    "EXR":"Real Estate",         # Extra Space Storage
+    "AVB":"Real Estate",         # AvalonBay
 }
 
 MACRO_INDICATORS = [
