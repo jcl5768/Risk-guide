@@ -1,3 +1,4 @@
+
 # engine.py — 개선된 로직
 # 변경 포인트:
 #   1. Percentile 기반 주가 위치 (Z-Score 정규분포 가정 탈피)
@@ -834,6 +835,35 @@ TICKER_NAME_MAP = {
     "Z":"Zillow","AI":"C3.ai","PATH":"UiPath","S":"SentinelOne",
     "CRWD":"CrowdStrike","ZS":"Zscaler","DDOG":"Datadog","NET":"Cloudflare",
     "MDB":"MongoDB","GTLB":"GitLab","U":"Unity Software","RBLX":"Roblox",
+
+    # ── 금융 SaaS / 기업용 소프트웨어
+    "INTU":"Intuit","NOW":"ServiceNow","WDAY":"Workday","HUBS":"HubSpot",
+    "VEEV":"Veeva Systems","TEAM":"Atlassian","ZM":"Zoom","DOCU":"DocuSign",
+    "BOX":"Box","OKTA":"Okta",
+
+    # ── 전통 대형주
+    "BRK-B":"Berkshire Hathaway","UNP":"Union Pacific","CSX":"CSX",
+    "WM":"Waste Management","ECL":"Ecolab","APH":"Amphenol",
+    "ITW":"Illinois Tool Works","PH":"Parker-Hannifin",
+    "GWW":"W.W. Grainger","ODFL":"Old Dominion Freight",
+
+    # ── 헬스케어
+    "ISRG":"Intuitive Surgical","SYK":"Stryker","BSX":"Boston Scientific",
+    "EW":"Edwards Lifesciences","RMD":"ResMed","DXCM":"DexCom",
+    "PODD":"Insulet","HOLX":"Hologic","IDXX":"IDEXX Laboratories",
+
+    # ── 소비재
+    "LULU":"Lululemon","RH":"RH","BURL":"Burlington","ROST":"Ross Stores",
+    "DG":"Dollar General","DLTR":"Dollar Tree","SFM":"Sprouts Farmers",
+    "ELF":"e.l.f. Beauty",
+
+    # ── 에너지
+    "DVN":"Devon Energy","FANG":"Diamondback Energy","OXY":"Occidental",
+    "MRO":"Marathon Oil","BKR":"Baker Hughes","NOV":"NOV Inc",
+
+    # ── 리츠
+    "WELL":"Welltower","DLR":"Digital Realty","PSA":"Public Storage",
+    "EXR":"Extra Space Storage","AVB":"AvalonBay",
 }
 
 def search_tickers(query):
