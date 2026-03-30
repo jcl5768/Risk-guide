@@ -267,7 +267,7 @@ def render_main_page():
     if portfolio:
         fg_score, fg_label, fg_clr = get_fear_greed()
         with st.spinner("Lv.1 분석 중..."):
-            avg_win, w_icon, w_label, w_clr, w_summary = get_portfolio_lv1(portfolio)
+            avg_win, w_icon, w_label, w_clr, w_summary = get_portfolio_lv1(portfolio, invest_mode=st.session_state.get("invest_mode", "단기"))
         st.markdown(
             f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
             f'padding:14px 18px;margin-bottom:16px;">'
@@ -365,6 +365,13 @@ def render_main_page():
         return
 
     st.markdown(
+        f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
+        f'<div style="background:#1A1D23;color:#FFFFFF;border-radius:6px;padding:3px 10px;'
+        f'font-size:11px;font-weight:700;">'
+        f'{st.session_state.get("invest_mode","단기")} 모드</div>'
+        f'<div style="font-size:11px;color:#9CA3AF;">'
+        f'{{"수일~수주 · 타점 중심" if st.session_state.get("invest_mode","단기")=="단기" else "수주~수개월 · 균형" if st.session_state.get("invest_mode","단기")=="스윙" else "수개월+ · 모멘텀 중심"}}'
+        f'</div></div>'
         '<div class="section-hdr">📈 보유 종목 분석 '
         '<span class="lv1" style="margin-left:6px;">Lv.1 / Lv.2</span></div>',
         unsafe_allow_html=True
@@ -376,7 +383,7 @@ def render_main_page():
     with st.status("📡 시장 데이터 수집 중...", expanded=False) as _status:
         for _s in portfolio:
             _status.update(label=f"🔍 {_s['ticker']} 분석 중...")
-        _batch = get_batch_portfolio_data(_tickers_t)
+        _batch = get_batch_portfolio_data(_tickers_t, st.session_state.get("invest_mode", "단기"))
         _status.update(label=f"✅ {len(portfolio)}개 종목 분석 완료", state="complete", expanded=False)
 
     for rs in range(0, len(portfolio), 4):
@@ -758,7 +765,7 @@ def render_detail_page():
         zs, price        = get_z_and_price(target)
         sk, cfg, inds    = get_sector_analysis(target)
         nb, news_items   = get_news(target)
-        fw, breakdown    = calc_win_rate(zs, inds, nb, stock_ticker=target, news_items=news_items)
+        fw, breakdown    = calc_win_rate(zs, inds, nb, stock_ticker=target, news_items=news_items, invest_mode=st.session_state.get("invest_mode", "단기"))
         weighted_z       = get_weighted_z(inds, breakdown.get("dynamic_weights"))
 
     st_, sc_, sv_ = get_signal(fw)
