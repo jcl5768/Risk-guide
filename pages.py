@@ -228,13 +228,44 @@ def _action_plan(fw):
 
 # ── 메인 대시보드 ─────────────────────────────────────────────────────────────
 def render_main_page():
-    st.markdown(
-        '<div style="margin-bottom:20px;">'
-        '<h2 style="font-size:22px;font-weight:700;color:#1A1D23;margin:0;">🔭 Signum — 포트폴리오 현황</h2>'
-        '<p style="font-size:13px;color:#6B7280;margin:4px 0 0;">시장 신호 기반 종목 분석 · Signum</p>'
-        '</div>',
-        unsafe_allow_html=True
-    )
+    # ── 헤더 + 투자 모드 선택 (메인 화면 상단) ───────────────────────
+    _imode = st.session_state.get('invest_mode', '단기')
+    _mode_info = {
+        '단기': ('📅', '#374151', '수일~수주 · 타점+모멘텀'),
+        '스윙': ('📆', '#2563EB', '수주~수개월 · 균형'),
+        '장기': ('🗓', '#059669', '수개월+ · 추세+거시환경'),
+    }
+    _icon, _clr, _desc = _mode_info.get(_imode, _mode_info['단기'])
+
+    col_title, col_mode = st.columns([3, 2])
+    with col_title:
+        st.markdown(
+            '<h2 style="font-size:22px;font-weight:700;color:#1A1D23;margin:0;">🔭 Signum</h2>'
+            '<p style="font-size:13px;color:#6B7280;margin:4px 0 0;">시장 신호 기반 종목 분석</p>',
+            unsafe_allow_html=True
+        )
+    with col_mode:
+        st.markdown(
+            f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:4px;text-align:right;">투자 기간 모드</div>',
+            unsafe_allow_html=True
+        )
+        _cols = st.columns(3)
+        for _ci, _opt in enumerate(['단기', '스윙', '장기']):
+            with _cols[_ci]:
+                _active = _imode == _opt
+                if st.button(
+                    _opt,
+                    key=f'mode_main_{_opt}',
+                    use_container_width=True,
+                    type='primary' if _active else 'secondary'
+                ):
+                    st.session_state.invest_mode = _opt
+                    st.rerun()
+        st.markdown(
+            f'<div style="font-size:10px;color:{_clr};text-align:right;margin-top:3px;">{_icon} {_desc}</div>',
+            unsafe_allow_html=True
+        )
+    st.markdown('<div style="height:16px;"></div>', unsafe_allow_html=True)
 
     # 거시 지표
     st.markdown('<div class="section-hdr">📡 주요 거시 지표</div>', unsafe_allow_html=True)
