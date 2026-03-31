@@ -228,44 +228,11 @@ def _action_plan(fw):
 
 # ── 메인 대시보드 ─────────────────────────────────────────────────────────────
 def render_main_page():
-    # ── 헤더 + 투자 모드 선택 (메인 화면 상단) ───────────────────────
-    _imode = st.session_state.get('invest_mode', '단기')
-    _mode_info = {
-        '단기': ('📅', '#374151', '수일~수주 · 타점+모멘텀'),
-        '스윙': ('📆', '#2563EB', '수주~수개월 · 균형'),
-        '장기': ('🗓', '#059669', '수개월+ · 추세+거시환경'),
-    }
-    _icon, _clr, _desc = _mode_info.get(_imode, _mode_info['단기'])
-
-    col_title, col_mode = st.columns([3, 2])
-    with col_title:
-        st.markdown(
-            '<h2 style="font-size:22px;font-weight:700;color:#1A1D23;margin:0;">🔭 Signum</h2>'
-            '<p style="font-size:13px;color:#6B7280;margin:4px 0 0;">시장 신호 기반 종목 분석</p>',
-            unsafe_allow_html=True
-        )
-    with col_mode:
-        st.markdown(
-            f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:4px;text-align:right;">투자 기간 모드</div>',
-            unsafe_allow_html=True
-        )
-        _cols = st.columns(3)
-        for _ci, _opt in enumerate(['단기', '스윙', '장기']):
-            with _cols[_ci]:
-                _active = _imode == _opt
-                if st.button(
-                    _opt,
-                    key=f'mode_main_{_opt}',
-                    use_container_width=True,
-                    type='primary' if _active else 'secondary'
-                ):
-                    st.session_state.invest_mode = _opt
-                    st.rerun()
-        st.markdown(
-            f'<div style="font-size:10px;color:{_clr};text-align:right;margin-top:3px;">{_icon} {_desc}</div>',
-            unsafe_allow_html=True
-        )
-    st.markdown('<div style="height:16px;"></div>', unsafe_allow_html=True)
+    st.markdown(
+        '<h2 style="font-size:22px;font-weight:700;color:#1A1D23;margin:0 0 4px;">🔭 Signum</h2>'
+        '<p style="font-size:13px;color:#6B7280;margin:0 0 16px;">시장 신호 기반 종목 분석</p>',
+        unsafe_allow_html=True
+    )
 
     # 거시 지표
     st.markdown('<div class="section-hdr">📡 주요 거시 지표</div>', unsafe_allow_html=True)
@@ -298,7 +265,7 @@ def render_main_page():
     if portfolio:
         fg_score, fg_label, fg_clr = get_fear_greed()
         with st.spinner("Lv.1 분석 중..."):
-            avg_win, w_icon, w_label, w_clr, w_summary = get_portfolio_lv1(portfolio, invest_mode=st.session_state.get("invest_mode", "단기"))
+            avg_win, w_icon, w_label, w_clr, w_summary = get_portfolio_lv1(portfolio)
         st.markdown(
             f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
             f'padding:14px 18px;margin-bottom:16px;">'
@@ -395,14 +362,7 @@ def render_main_page():
             st.info('← 왼쪽 사이드바의 검색창에서 종목을 추가하세요. (사이드바 상단 >> 버튼으로 열 수 있어요)')
         return
 
-    _imode = st.session_state.get('invest_mode', '단기')
-    _imode_desc = {'단기': '수일~수주 · 타점 중심', '스윙': '수주~수개월 · 균형', '장기': '수개월+ · 모멘텀 중심'}.get(_imode, '')
-    _imode_clr  = {'단기': '#374151', '스윙': '#2563EB', '장기': '#059669'}.get(_imode, '#374151')
     st.markdown(
-        f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">'
-        f'<div style="background:{_imode_clr};color:#FFFFFF;border-radius:6px;padding:3px 10px;'
-        f'font-size:11px;font-weight:700;">{_imode} 모드</div>'
-        f'<div style="font-size:11px;color:#9CA3AF;">{_imode_desc}</div></div>'
         '<div class="section-hdr">📈 보유 종목 분석 '
         '<span class="lv1" style="margin-left:6px;">Lv.1 / Lv.2</span></div>',
         unsafe_allow_html=True
@@ -414,7 +374,7 @@ def render_main_page():
     with st.status("📡 시장 데이터 수집 중...", expanded=False) as _status:
         for _s in portfolio:
             _status.update(label=f"🔍 {_s['ticker']} 분석 중...")
-        _batch = get_batch_portfolio_data(_tickers_t, st.session_state.get("invest_mode", "단기"))
+        _batch = get_batch_portfolio_data(_tickers_t)
         _status.update(label=f"✅ {len(portfolio)}개 종목 분석 완료", state="complete", expanded=False)
 
     for rs in range(0, len(portfolio), 4):
@@ -796,7 +756,7 @@ def render_detail_page():
         zs, price        = get_z_and_price(target)
         sk, cfg, inds    = get_sector_analysis(target)
         nb, news_items   = get_news(target)
-        fw, breakdown    = calc_win_rate(zs, inds, nb, stock_ticker=target, news_items=news_items, invest_mode=st.session_state.get("invest_mode", "단기"))
+        fw, breakdown    = calc_win_rate(zs, inds, nb, stock_ticker=target, news_items=news_items)
         weighted_z       = get_weighted_z(inds, breakdown.get("dynamic_weights"))
 
     st_, sc_, sv_ = get_signal(fw)
