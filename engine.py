@@ -442,7 +442,7 @@ def _get_momentum_score(ticker):
         return 0.0, {}
 
 # ── 핵심 승률 계산 ────────────────────────────────────────────────────────────
-def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items=None, invest_mode="단기"):
+def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items=None):
     # 1. 주가 위치 (Percentile)
     if stock_ticker:
         position_score, percentile = _percentile_score(stock_ticker)
@@ -491,35 +491,11 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
         momentum_score = 0.0
         momentum_meta  = {}
 
-    # 6. 모드별 가중치 설정
-    if invest_mode == "장기":
-        # 장기 보유 모드 (수개월~수년):
-        # - 가격 위치: 거의 무시 (장기엔 현재 고점이 의미 없음)
-        # - 하락장 패널티: 완전 제거 (장기엔 하락이 매수 기회)
-        # - 모멘텀: 강화 (주도주 판별 핵심)
-        # - 거시환경: 강화 (금리·달러 방향은 장기에 더 중요)
-        pos_w       = 0.4    # 가격위치 60% 축소
-        regime_use  = 0.0    # 하락장 패널티 완전 제거
-        momentum_w  = 1.3    # 모멘텀 강화
-        macro_w     = 1.2    # 거시환경 강화 (금리방향 장기에 핵심)
-    elif invest_mode == "스윙":
-        # 스윙 모드 (수주~수개월): 균형
-        pos_w       = 0.75   # 가격위치 25% 축소
-        regime_use  = regime_adj * 0.4  # 하락장 패널티 60% 감소
-        momentum_w  = 1.2    # 모멘텀 소폭 강화
-        macro_w     = 1.0    # 거시환경 그대로
-    else:  # 단기 (수일~수주)
-        # - 가격 위치: 약간 완화 (단기 타점은 중요하지만 엄격하게만은 X)
-        # - 모멘텀: 강화 (단기는 지금 오르는 방향에 올라타는 게 핵심)
-        # - 거시환경: 소폭 축소 (단기엔 뉴스·모멘텀이 더 즉각 반응)
-        pos_w       = 0.6    # 가격위치 40% 축소 (타점 중요하되 유연하게)
-        regime_use  = regime_adj  # 하락장 경고 그대로
-        momentum_w  = 1.4    # 모멘텀 가장 강화 (단기 추세 올라타기)
-        macro_w     = 0.8    # 거시환경 축소 (단기엔 즉각 반응 못함)
-
-    adj_position = round(position_score * pos_w, 1)
-    adj_momentum = round(momentum_score * momentum_w, 1)
-    adj_macro    = round(macro_score * macro_w, 1)
+    # 6. 가중치 — 현재 시장 환경 기반 단·중기 분석 (1~3개월 기준)
+    adj_position = round(position_score * 0.7, 1)   # 가격위치 30% 완화
+    adj_momentum = round(momentum_score * 1.3, 1)   # 모멘텀 강화
+    adj_macro    = round(macro_score    * 1.0, 1)
+    regime_use   = regime_adj
 
     # 모멘텀 오프셋 (고점 패널티 상쇄)
     momentum_offset = 0.0
@@ -561,11 +537,10 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
         "final":           final,
         "dynamic_weights": dyn_w,
         "z_penalty":       position_score,
-        "invest_mode":     invest_mode,
         "adj_position":    adj_position,
         "adj_momentum":    adj_momentum,
         "explain": (
-            f"[{invest_mode}] 기본(50) {'+' if adj_position>=0 else ''}{adj_position}"
+            f"기본(50) {'+' if adj_position>=0 else ''}{adj_position}"
             f"(가격{percentile:.0f}%ile) "
             f"{'+' if adj_macro>=0 else ''}{adj_macro}(거시Z) "
             f"{'+' if news_adj>=0 else ''}{news_adj}(뉴스) "
@@ -1006,7 +981,7 @@ def get_fear_greed():
         return 50, "중립", "#D97706"
 
 
-def get_portfolio_lv1(portfolio, batch_data=None, invest_mode="단기"):
+def get_portfolio_lv1(portfolio, batch_data=None):
     """
     Lv.1 — 포트폴리오 전체 가중 평균 승률 + 날씨 신호등
     batch_data: get_batch_portfolio_data() 결과를 넘기면 중복 API 호출 없이 재사용.
@@ -1479,7 +1454,7 @@ def get_relative_momentum(ticker, sector="Unknown"):
 # ══════════════════════════════════════════════════════════════════════════════
 
 @st.cache_data(ttl=600)
-def get_batch_portfolio_data(tickers_tuple, invest_mode="단기"):
+def get_batch_portfolio_data(tickers_tuple):
     """
     메인 대시보드용 배치 로더.
     종목 리스트를 받아 z·가격·섹터분석·승률을 한 번에 캐시 조회.
@@ -1495,7 +1470,6 @@ def get_batch_portfolio_data(tickers_tuple, invest_mode="단기"):
             nb, items      = get_korean_news(ticker)
             win, breakdown = calc_win_rate(
                 zs, inds, nb, stock_ticker=ticker, news_items=items,
-                invest_mode=invest_mode
             )
             result[ticker] = {
                 "z": zs, "price": price,
