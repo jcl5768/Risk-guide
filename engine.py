@@ -88,7 +88,7 @@ PERIOD_MAP = {
 }
 PERIOD_LABELS = ["1개월", "3개월", "1년", "5년"]
 
-@st.cache_data(ttl=120)
+@st.cache_data(ttl=300)
 def get_chart_data(ticker, period_key="1개월"):
     period, interval = PERIOD_MAP.get(period_key, ("1mo","1d"))
     try:
@@ -553,15 +553,16 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
 @st.cache_data(ttl=1800)
 def run_backtest(ticker, indicators_config):
     """
-    과거 신호 → 20 거래일 후 실제 수익률 검증
+    과거 신호 → 1개월(20일) / 3개월(60일) 후 실제 수익률 동시 검증
     - 2년치 데이터, 20일 간격 슬라이딩
-    - 매수/리스크 신호별 적중률·평균수익률·샤프 계산
-    - 최근 5개 샘플 반환
+    - 가격위치 + 거시Z + 모멘텀 팩터 포함 (실제 승률 계산과 일관성)
+    - 기간별 적중률·평균수익률·샤프 반환
     """
     try:
         raw   = yf.download(ticker, period="2y", interval="1d", progress=False)
         close = _extract_close(raw).dropna()
-        if len(close) < 60: return None
+        # 3개월 후 검증을 위해 최소 120거래일 필요
+        if len(close) < 120: return None
 
         # 지표 데이터 미리 로드
         ind_data = {}
@@ -574,8 +575,11 @@ def run_backtest(ticker, indicators_config):
                 pass
 
         results = []
-        step    = 20
-        for i in range(60, len(close) - step, step):
+        step_1m  = 20   # 1개월 (약 20 거래일)
+        step_3m  = 60   # 3개월 (약 60 거래일)
+        max_step = step_3m  # 3개월 후까지 데이터가 있어야 기록
+
+        for i in range(60, len(close) - max_step, step_1m):
             signal_date = close.index[i]
             window      = close.iloc[max(0, i-252):i]
             if len(window) < 30: continue
@@ -584,30 +588,45 @@ def run_backtest(ticker, indicators_config):
             pct = float((window < cur).sum() / len(window) * 100)
             p_s = round((50 - pct) / 50 * 12, 1)
 
-            # 거시 Z (고정 가중치, 백테스트 단순화)
+            # 거시 Z
             mz_sum = 0.0; tw = 0.0
             for ind in indicators_config:
                 if ind["ticker"] not in ind_data: continue
                 past = ind_data[ind["ticker"]][ind_data[ind["ticker"]].index <= signal_date].tail(21)
                 if len(past) < 5: continue
-                ic = float(past.iloc[-1])
-                im = float(past.tail(20).mean())
-                ist= float(past.tail(20).std())
-                iz = (ic - im) / ist if ist > 0 else 0.0
+                ic  = float(past.iloc[-1])
+                im  = float(past.tail(20).mean())
+                ist = float(past.tail(20).std())
+                iz  = (ic - im) / ist if ist > 0 else 0.0
                 mz_sum += iz * ind["direction"] * ind["driver_weight"]
                 tw     += ind["driver_weight"]
-
             macro_z = mz_sum / tw if tw > 0 else 0.0
-            score   = max(5, min(95, 50 + p_s + macro_z * 15))
-            signal  = "매수" if score >= 60 else "리스크" if score < 45 else "중립"
 
-            future_price = float(close.iloc[i + step])
-            ret          = round((future_price - cur) / cur * 100, 2)
+            # 모멘텀 (20일 수익률 기반 간이 계산 — 실제 승률과 일관성)
+            mom_20 = float((close.iloc[i] / close.iloc[max(0,i-21)] - 1) * 100) if i >= 21 else 0.0
+            mom_score_simple = round(max(-8.0, min(8.0, mom_20 * 0.6)), 1)
+
+            # 통합 score — 실제 calc_win_rate와 동일한 구조
+            score = max(5, min(95,
+                50
+                + round(p_s * 0.7, 1)          # 가격위치 (×0.7 완화)
+                + round(macro_z * 15 * 1.0, 1) # 거시환경
+                + round(mom_score_simple * 1.3, 1)  # 모멘텀
+            ))
+            signal = "매수" if score >= 60 else "리스크" if score < 45 else "중립"
+
+            # 1개월 후 수익률
+            ret_1m = round((float(close.iloc[i + step_1m]) - cur) / cur * 100, 2)
+            # 3개월 후 수익률
+            ret_3m = round((float(close.iloc[i + step_3m]) - cur) / cur * 100, 2)
+
             results.append({
                 "date":   str(signal_date)[:10],
                 "score":  round(score, 1),
                 "signal": signal,
-                "ret":    ret,
+                "ret":    ret_1m,   # 기본 ret는 1개월 (하위호환)
+                "ret_1m": ret_1m,
+                "ret_3m": ret_3m,
                 "pct":    round(pct, 1),
             })
 
@@ -617,26 +636,46 @@ def run_backtest(ticker, indicators_config):
         buy_df  = df_r[df_r["signal"] == "매수"]
         risk_df = df_r[df_r["signal"] == "리스크"]
 
-        buy_acc  = round(float((buy_df["ret"]  > 0).mean() * 100), 1) if len(buy_df)  > 0 else 0.0
-        risk_acc = round(float((risk_df["ret"] < 0).mean() * 100), 1) if len(risk_df) > 0 else 0.0
-        avg_buy  = round(float(buy_df["ret"].mean()),  2) if len(buy_df)  > 0 else 0.0
-        avg_risk = round(float(risk_df["ret"].mean()), 2) if len(risk_df) > 0 else 0.0
+        def _acc(df, col, positive=True):
+            if len(df) == 0: return 0.0
+            return round(float((df[col] > 0).mean() * 100 if positive else (df[col] < 0).mean() * 100), 1)
+        def _avg(df, col):
+            return round(float(df[col].mean()), 2) if len(df) > 0 else 0.0
 
+        # 1개월 기준
+        buy_acc_1m  = _acc(buy_df,  "ret_1m", positive=True)
+        risk_acc_1m = _acc(risk_df, "ret_1m", positive=False)
+        avg_buy_1m  = _avg(buy_df,  "ret_1m")
+        avg_risk_1m = _avg(risk_df, "ret_1m")
+
+        # 3개월 기준
+        buy_acc_3m  = _acc(buy_df,  "ret_3m", positive=True)
+        risk_acc_3m = _acc(risk_df, "ret_3m", positive=False)
+        avg_buy_3m  = _avg(buy_df,  "ret_3m")
+        avg_risk_3m = _avg(risk_df, "ret_3m")
+
+        # 샤프지수 (1개월 기준)
         sharpe = round(
-            float(buy_df["ret"].mean() / buy_df["ret"].std() * np.sqrt(12)), 2
-        ) if len(buy_df) > 1 and buy_df["ret"].std() > 0 else 0.0
+            float(buy_df["ret_1m"].mean() / buy_df["ret_1m"].std() * np.sqrt(12)), 2
+        ) if len(buy_df) > 1 and buy_df["ret_1m"].std() > 0 else 0.0
 
-        # 최근 5개 샘플 (매수/리스크만, 최신순)
         samples = df_r[df_r["signal"] != "중립"].tail(6).iloc[::-1].head(5).to_dict("records")
 
         return {
             "total":        len(df_r),
             "buy_count":    len(buy_df),
             "risk_count":   len(risk_df),
-            "buy_acc":      buy_acc,
-            "risk_acc":     risk_acc,
-            "avg_ret_buy":  avg_buy,
-            "avg_ret_risk": avg_risk,
+            "buy_acc":      buy_acc_1m,   # 하위호환 (1개월)
+            "risk_acc":     risk_acc_1m,
+            "avg_ret_buy":  avg_buy_1m,
+            "avg_ret_risk": avg_risk_1m,
+            
+            
+            
+            "buy_acc_3m":   buy_acc_3m,
+            "risk_acc_3m":  risk_acc_3m,
+            "avg_buy_3m":   avg_buy_3m,
+            "avg_risk_3m":  avg_risk_3m,
             "sharpe":       sharpe,
             "samples":      samples,
         }
@@ -1359,7 +1398,7 @@ def simulate_portfolio_history(portfolio_snapshot):
         best_stock  = max(stock_rets.items(), key=lambda x: x[1]) if stock_rets else ("—", 0)
         worst_stock = min(stock_rets.items(), key=lambda x: x[1]) if stock_rets else ("—", 0)
         dates = [str(d)[:10] for d in port_pct.index.tolist()]
-        spy_aligned = spy_ret.reindex(port_pct.index).ffill().fillna(0).round(2).tolist()
+        spy_aligned = spy_ret.reindex(port_pct.index).ffill().bfill().fillna(0).round(2).tolist()
         return {
             "dates": dates,
             "portfolio_returns": port_pct.tolist(),
