@@ -21,7 +21,6 @@ def init_session():
     if "show_add"      not in st.session_state: st.session_state.show_add      = False
     if "chart_period"  not in st.session_state: st.session_state.chart_period  = "1개월"
     if "open_sidebar"  not in st.session_state: st.session_state.open_sidebar  = False
-    if "invest_mode"   not in st.session_state: st.session_state.invest_mode   = "단기"
 
 init_session()
 
@@ -252,24 +251,7 @@ with st.sidebar:
     st.markdown("---")
     with st.expander("⚙️ 설정"):
         # ── 투자 모드 선택 ──────────────────────────────────────────
-        # 투자 모드는 메인 화면 상단 버튼으로 변경 가능
-        _m   = st.session_state.get("invest_mode", "단기")
-        _clr = {"단기": "#374151", "스윙": "#2563EB", "장기": "#059669"}.get(_m, "#374151")
-        _mdesc = {
-            "단기": "📅 타점 중심 — 지금 싼가 비싼가",
-            "스윙": "📆 균형 분석 — 타점 + 추세",
-            "장기": "🗓 추세 중심 — 모멘텀·거시환경",
-        }.get(_m, "")
-        st.markdown(
-            f'<div style="background:#F9FAFB;border-left:3px solid {_clr};'
-            f'border-radius:0 6px 6px 0;padding:8px 12px;margin-bottom:10px;'
-            f'font-size:11px;color:#374151;">'
-            f'현재 모드: <b style="color:{_clr};">{_m}</b><br>'
-            f'{_mdesc}<br>'
-            f'<span style="font-size:10px;color:#9CA3AF;">메인 화면 상단에서 변경하세요</span></div>',
-            unsafe_allow_html=True
-        )
-        st.markdown("---")
+
 
         # ── 포트폴리오 저장 (인라인 방식) ───────────────────────────────
         if st.session_state.portfolio:
