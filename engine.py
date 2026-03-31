@@ -1,4 +1,3 @@
-
 # engine.py — 개선된 로직
 # 변경 포인트:
 #   1. Percentile 기반 주가 위치 (Z-Score 정규분포 가정 탈피)
@@ -494,25 +493,29 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
 
     # 6. 모드별 가중치 설정
     if invest_mode == "장기":
-        # 장기 보유 모드:
-        # - 가격 위치 패널티 50% 축소 (장기엔 단기 고점이 의미 없음)
-        # - 하락장 패널티 제거 (장기엔 하락이 오히려 기회)
-        # - 모멘텀·상대강도 강화 (주도주 판별이 핵심)
-        pos_w       = 0.5    # 가격위치 가중치 50%로 축소
-        regime_use  = 0.0    # 하락장 패널티 무시
-        momentum_w  = 1.5    # 모멘텀 1.5배 강화
-        macro_w     = 0.8    # 거시환경 소폭 축소
+        # 장기 보유 모드 (수개월~수년):
+        # - 가격 위치: 거의 무시 (장기엔 현재 고점이 의미 없음)
+        # - 하락장 패널티: 완전 제거 (장기엔 하락이 매수 기회)
+        # - 모멘텀: 강화 (주도주 판별 핵심)
+        # - 거시환경: 강화 (금리·달러 방향은 장기에 더 중요)
+        pos_w       = 0.4    # 가격위치 60% 축소
+        regime_use  = 0.0    # 하락장 패널티 완전 제거
+        momentum_w  = 1.3    # 모멘텀 강화
+        macro_w     = 1.2    # 거시환경 강화 (금리방향 장기에 핵심)
     elif invest_mode == "스윙":
-        # 스윙 모드 (수주~수개월):
-        pos_w       = 0.75
-        regime_use  = regime_adj * 0.5
-        momentum_w  = 1.2
-        macro_w     = 1.0
-    else:  # 단기 (기본)
-        pos_w       = 1.0
-        regime_use  = regime_adj
-        momentum_w  = 1.0
-        macro_w     = 1.0
+        # 스윙 모드 (수주~수개월): 균형
+        pos_w       = 0.75   # 가격위치 25% 축소
+        regime_use  = regime_adj * 0.4  # 하락장 패널티 60% 감소
+        momentum_w  = 1.2    # 모멘텀 소폭 강화
+        macro_w     = 1.0    # 거시환경 그대로
+    else:  # 단기 (수일~수주)
+        # - 가격 위치: 약간 완화 (단기 타점은 중요하지만 엄격하게만은 X)
+        # - 모멘텀: 강화 (단기는 지금 오르는 방향에 올라타는 게 핵심)
+        # - 거시환경: 소폭 축소 (단기엔 뉴스·모멘텀이 더 즉각 반응)
+        pos_w       = 0.6    # 가격위치 40% 축소 (타점 중요하되 유연하게)
+        regime_use  = regime_adj  # 하락장 경고 그대로
+        momentum_w  = 1.4    # 모멘텀 가장 강화 (단기 추세 올라타기)
+        macro_w     = 0.8    # 거시환경 축소 (단기엔 즉각 반응 못함)
 
     adj_position = round(position_score * pos_w, 1)
     adj_momentum = round(momentum_score * momentum_w, 1)
