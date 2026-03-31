@@ -252,41 +252,21 @@ with st.sidebar:
     st.markdown("---")
     with st.expander("⚙️ 설정"):
         # ── 투자 모드 선택 ──────────────────────────────────────────
-        mode_options = ["단기", "스윙", "장기"]
-        st.markdown(
-            '<div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">'
-            '📐 투자 기간 모드</div>',
-            unsafe_allow_html=True
-        )
-        cur_idx = mode_options.index(st.session_state.get("invest_mode", "단기"))
-        selected_mode = st.radio(
-            "투자 모드",
-            options=mode_options,
-            index=cur_idx,
-            horizontal=True,
-            label_visibility="collapsed",
-            key="mode_radio"
-        )
-        if selected_mode != st.session_state.get("invest_mode", "단기"):
-            st.session_state.invest_mode = selected_mode
-            st.rerun()
-
-        # 모드별 쉬운 설명
-        _m = st.session_state.get("invest_mode", "단기")
-        if _m == "단기":
-            _desc = "📅 <b>단기</b> — 지금 이 타점이 싼가 비싼가에 집중<br>고점 패널티 강함 · 하락장 경고 강함"
-            _clr  = "#374151"
-        elif _m == "스윙":
-            _desc = "📆 <b>스윙</b> — 타점 + 추세를 균형 있게 봄<br>고점 패널티 약간 완화 · 모멘텀 소폭 강화"
-            _clr  = "#2563EB"
-        else:
-            _desc = "🗓 <b>장기</b> — 지금 비싸도 추세가 강하면 OK<br>고점 패널티 절반 · 하락장 경고 없음 · 모멘텀 1.5배"
-            _clr  = "#059669"
-
+        # 투자 모드는 메인 화면 상단 버튼으로 변경 가능
+        _m   = st.session_state.get("invest_mode", "단기")
+        _clr = {"단기": "#374151", "스윙": "#2563EB", "장기": "#059669"}.get(_m, "#374151")
+        _mdesc = {
+            "단기": "📅 타점 중심 — 지금 싼가 비싼가",
+            "스윙": "📆 균형 분석 — 타점 + 추세",
+            "장기": "🗓 추세 중심 — 모멘텀·거시환경",
+        }.get(_m, "")
         st.markdown(
             f'<div style="background:#F9FAFB;border-left:3px solid {_clr};'
             f'border-radius:0 6px 6px 0;padding:8px 12px;margin-bottom:10px;'
-            f'font-size:11px;color:#374151;line-height:1.7;">{_desc}</div>',
+            f'font-size:11px;color:#374151;">'
+            f'현재 모드: <b style="color:{_clr};">{_m}</b><br>'
+            f'{_mdesc}<br>'
+            f'<span style="font-size:10px;color:#9CA3AF;">메인 화면 상단에서 변경하세요</span></div>',
             unsafe_allow_html=True
         )
         st.markdown("---")
