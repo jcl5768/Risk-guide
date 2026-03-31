@@ -1706,39 +1706,64 @@ def render_detail_page():
         if bt is None:
             st.info("데이터가 부족하여 백테스트를 실행할 수 없습니다.")
         else:
-            # ── 요약 지표 4개 ────────────────────────────────────────
-            buy_clr  = "#059669" if bt["buy_acc"]  >= 55 else "#D97706" if bt["buy_acc"]  >= 45 else "#DC2626"
-            risk_clr = "#059669" if bt["risk_acc"] >= 55 else "#D97706" if bt["risk_acc"] >= 45 else "#DC2626"
-            shp_clr  = "#059669" if bt["sharpe"]   >= 0.5 else "#D97706" if bt["sharpe"] >= 0 else "#DC2626"
-            avg_clr  = "#059669" if bt["avg_ret_buy"] >= 0 else "#DC2626"
+            # ── 기간별 탭: 1개월 / 3개월 ─────────────────────────────
+            shp_clr = "#059669" if bt["sharpe"] >= 0.5 else "#D97706" if bt["sharpe"] >= 0 else "#DC2626"
 
-            # KPI 카드 (레이블 + 부제목 + 수치)
-            kpi_items = [
-                ("매수 신호 적중률",   "승률 60%↑ 신호 후 1개월 실제 상승한 비율", f"{bt['buy_acc']}%",          buy_clr),
-                ("리스크 신호 적중률", "승률 45%↓ 신호 후 1개월 실제 하락한 비율", f"{bt['risk_acc']}%",         risk_clr),
-                ("매수 평균 수익",     "매수 신호 발생 후 1개월 평균 수익률",       f"{bt['avg_ret_buy']:+.1f}%", avg_clr),
-                ("샤프지수(근사)",     "0.5↑ 우수 · 0↑ 보통",                      f"{bt['sharpe']}",            shp_clr),
-            ]
-            kpi_c = st.columns(4)
-            for col, (lbl, sub, val, clr) in zip(kpi_c, kpi_items):
-                col.markdown(
-                    f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;'
-                    f'padding:10px;text-align:center;">'
-                    f'<div style="font-size:9px;color:#9CA3AF;text-transform:uppercase;'
-                    f'letter-spacing:0.5px;margin-bottom:2px;">{lbl}</div>'
-                    f'<div style="font-size:9px;color:#B0B7C3;margin-bottom:4px;">{sub}</div>'
-                    f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:18px;'
-                    f'font-weight:700;color:{clr};">{val}</div></div>',
+            st.markdown(
+                f'<div style="font-size:11px;color:#9CA3AF;text-align:center;margin:0 0 12px;">' +
+                f'과거 2년 · 총 {bt["total"]}번 신호 발생 ' +
+                f'(매수 {bt["buy_count"]}회 · 리스크 {bt["risk_count"]}회)</div>',
+                unsafe_allow_html=True
+            )
+
+            _bt_tab1, _bt_tab2 = st.tabs(["📅 1개월 후 검증", "📆 3개월 후 검증"])
+
+            def _draw_bt_kpis(buy_acc, risk_acc, avg_buy, avg_risk, period_lbl, sharpe_val=None):
+                bc = "#059669" if buy_acc  >= 55 else "#D97706" if buy_acc  >= 45 else "#DC2626"
+                rc = "#059669" if risk_acc >= 55 else "#D97706" if risk_acc >= 45 else "#DC2626"
+                ac = "#059669" if avg_buy  >= 0 else "#DC2626"
+                items = [
+                    ("매수 신호 적중률",   f"신호 후 {period_lbl} 실제 상승", f"{buy_acc}%",       bc),
+                    ("리스크 신호 적중률", f"신호 후 {period_lbl} 실제 하락", f"{risk_acc}%",      rc),
+                    ("매수 평균 수익",     f"{period_lbl} 평균 수익률",       f"{avg_buy:+.1f}%",  ac),
+                ]
+                if sharpe_val is not None:
+                    items.append(("샤프지수(근사)", "0.5↑ 우수 · 0↑ 보통", f"{sharpe_val}", shp_clr))
+                _kc = st.columns(len(items))
+                for _col, (_lbl, _sub, _val, _clr) in zip(_kc, items):
+                    _col.markdown(
+                        f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;'
+                        f'padding:10px;text-align:center;">'
+                        f'<div style="font-size:9px;color:#9CA3AF;margin-bottom:2px;">{_lbl}</div>'
+                        f'<div style="font-size:9px;color:#B0B7C3;margin-bottom:4px;">{_sub}</div>'
+                        f'<div style="font-family:JetBrains Mono,monospace;font-size:17px;'
+                        f'font-weight:700;color:{_clr};">{_val}</div></div>',
+                        unsafe_allow_html=True
+                    )
+
+            with _bt_tab1:
+                _draw_bt_kpis(
+                    bt["buy_acc"], bt["risk_acc"],
+                    bt["avg_ret_buy"], bt["avg_ret_risk"],
+                    "1개월", bt["sharpe"]
+                )
+
+            with _bt_tab2:
+                _acc_3m_buy  = bt.get("buy_acc_3m",  0.0)
+                _acc_3m_risk = bt.get("risk_acc_3m", 0.0)
+                _avg_3m_buy  = bt.get("avg_buy_3m",  0.0)
+                _avg_3m_risk = bt.get("avg_risk_3m", 0.0)
+                _draw_bt_kpis(
+                    _acc_3m_buy, _acc_3m_risk,
+                    _avg_3m_buy, _avg_3m_risk,
+                    "3개월"
+                )
+                st.markdown(
+                    '<div style="font-size:10px;color:#9CA3AF;margin-top:6px;">' +
+                    '1개월 신호 기준 3개월 후 수익률 — 신호가 중기에도 유효한지 확인</div>',
                     unsafe_allow_html=True
                 )
 
-            # ── 신호 분포 요약 ────────────────────────────────────────
-            st.markdown(
-                f'<div style="font-size:11px;color:#9CA3AF;text-align:center;margin:8px 0 14px;">'
-                f'과거 2년 · 총 {bt["total"]}번 신호 발생 '
-                f'(매수 {bt["buy_count"]}회 · 리스크 {bt["risk_count"]}회 · 각 신호 후 1개월 수익률 측정)</div>',
-                unsafe_allow_html=True
-            )
 
             # ── 신호별 수익률 바 차트 ─────────────────────────────────
             if bt["buy_count"] > 0 or bt["risk_count"] > 0:
@@ -1823,8 +1848,8 @@ def render_detail_page():
             if bt:
                 calib_rows = ""
                 for sig_label, acc, avg_ret, count in [
-                    ("매수 신호 (60%↑)", bt["buy_acc"],  bt["avg_ret_buy"],  bt["buy_count"]),
-                    ("리스크 신호 (45%↓)", bt["risk_acc"], bt["avg_ret_risk"], bt["risk_count"]),
+                    ("매수 신호 (60%↑)", bt["buy_acc"],  bt["avg_ret_buy"],  bt["buy_count"])  # 1개월 기준,
+                    ("리스크 신호 (45%↓)", bt["risk_acc"], bt["avg_ret_risk"], bt["risk_count"])  # 1개월 기준,
                 ]:
                     if count == 0:
                         continue
