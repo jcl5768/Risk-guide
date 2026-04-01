@@ -1848,8 +1848,8 @@ def render_detail_page():
             if bt:
                 calib_rows = ""
                 for sig_label, acc, avg_ret, count in [
-                    ("매수 신호 (60%↑)", bt["buy_acc"],  bt["avg_ret_buy"],  bt["buy_count"])  # 1개월 기준,
-                    ("리스크 신호 (45%↓)", bt["risk_acc"], bt["avg_ret_risk"], bt["risk_count"])  # 1개월 기준,
+                    ("매수 신호 (60%↑)", bt["buy_acc"],  bt["avg_ret_buy"],  bt["buy_count"]),
+                    ("리스크 신호 (45%↓)", bt["risk_acc"], bt["avg_ret_risk"], bt["risk_count"]),
                 ]:
                     if count == 0:
                         continue
