@@ -287,15 +287,16 @@ def _news_decay(raw_score, pub_date_str, title=""):
 
     # 단기 뉴스 — 시간 감쇠
     if not pub_date_str:
-        return raw_score * 0.5
+        return raw_score * 0.4
     try:
         from email.utils import parsedate_to_datetime
         pub_dt  = parsedate_to_datetime(pub_date_str)
         now_utc = datetime.now(pub_dt.tzinfo) if pub_dt.tzinfo else datetime.utcnow()
         hours   = (now_utc - pub_dt).total_seconds() / 3600
         if hours <= 24:   return raw_score * 1.0
-        elif hours <= 48: return raw_score * 0.5
-        else:             return raw_score * 0.1
+        elif hours <= 48: return raw_score * 0.6
+        elif hours <= 168: return raw_score * 0.3   # 1주일 이내
+        else:              return raw_score * 0.15  # 1주일 이상 (완전 소멸 방지)
     except:
         return raw_score * 0.5
 
@@ -467,7 +468,7 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
     if news_items:
         news_adj = round(sum(
             _news_decay(
-                5.0 if n["sentiment"]=="Positive" else -5.0 if n["sentiment"]=="Negative" else 0.0,
+                6.0 if n["sentiment"]=="Positive" else -6.0 if n["sentiment"]=="Negative" else 0.0,
                 n.get("pub_date_raw",""),
                 n.get("title","")
             ) for n in news_items
@@ -686,10 +687,22 @@ def run_backtest(ticker, indicators_config):
 # ── 뉴스 수집 ─────────────────────────────────────────────────────────────────
 @st.cache_data(ttl=600)
 def get_korean_news(ticker, stock_name=""):
-    pos_kw = ["상승","급등","호재","매수","추천","목표가 상향","실적 개선","흑자","성장",
-              "수혜","돌파","신고가","강세","긍정","반등","최고","증가","확대","수주","계약","출시","승인"]
-    neg_kw = ["하락","급락","악재","매도","목표가 하향","실적 부진","적자","우려","리스크",
-              "위기","하회","약세","부정","손실","감소","축소","취소","리콜","소송","조사"]
+    pos_kw = [
+        "상승","급등","호재","매수","추천","목표가 상향","목표가↑","실적 개선","흑자","성장",
+        "수혜","돌파","신고가","강세","긍정","반등","최고","증가","확대","수주","계약","출시","승인",
+        "어닝 서프라이즈","예상 상회","호실적","최대 실적","사상 최고","강한 성장","주가 상승",
+        "매수 의견","비중 확대","목표주가 상향","투자의견 상향","긍정적","기대 이상",
+        "신규 계약","대규모 수주","파트너십","협력","흑자 전환","턴어라운드",
+        "surges","rises","beats","record","strong","upgrade","outperform","buy"
+    ]
+    neg_kw = [
+        "하락","급락","악재","매도","목표가 하향","목표가↓","실적 부진","적자","우려","리스크",
+        "위기","하회","약세","부정","손실","감소","축소","취소","리콜","소송","조사",
+        "어닝 쇼크","예상 하회","부진한","최저","급감","위험","경고","긴축","제재",
+        "매도 의견","비중 축소","목표주가 하향","투자의견 하향","부정적","우려스러운",
+        "계약 해지","파트너 이탈","구조조정","감원","파산","적자 전환",
+        "falls","drops","misses","weak","downgrade","underperform","sell","plunges"
+    ]
     queries  = []
     if stock_name and stock_name != ticker: queries.append(stock_name)
     queries.append(f"{ticker} 주가")
@@ -729,7 +742,7 @@ def get_korean_news(ticker, stock_name=""):
     subset = all_news[:8]
     decayed = sum(
         _news_decay(
-            2.5 if n["sentiment"]=="Positive" else -2.5 if n["sentiment"]=="Negative" else 0.0,
+            4.0 if n["sentiment"]=="Positive" else -4.0 if n["sentiment"]=="Negative" else 0.0,
             n.get("pub_date_raw",""),
             n.get("title","")   # ← 지속성 분류
         ) for n in subset
