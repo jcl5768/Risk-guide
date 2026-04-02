@@ -4,7 +4,7 @@ import plotly.graph_objects as go
 from config import SECTOR_CONFIG, MACRO_INDICATORS, SENSITIVITY_COLOR, SENSITIVITY_LABEL
 from engine import (
     detect_sector, get_z_and_price, get_sector_analysis,
-    get_price_history, get_news, get_korean_news,
+    get_price_history, get_korean_news,
     get_macro_correlation, get_chart_data, get_price_stats,
     calc_win_rate, get_weighted_z, run_backtest,
     get_signal, zcolor, zdesc, corr_color,
@@ -778,7 +778,7 @@ def render_detail_page():
     with st.spinner(f"{target} 분석 중..."):
         zs, price        = get_z_and_price(target)
         sk, cfg, inds    = get_sector_analysis(target)
-        nb, news_items   = get_news(target)
+        nb, news_items   = get_korean_news(target, si.get("name", ""))
         fw, breakdown    = calc_win_rate(zs, inds, nb, stock_ticker=target, news_items=news_items)
         weighted_z       = get_weighted_z(inds, breakdown.get("dynamic_weights"))
 
@@ -1588,8 +1588,8 @@ def render_detail_page():
 
     # ── TAB 4: 뉴스 ──────────────────────────────────────────────────
     with tab4:
-        with st.spinner("뉴스 수집 중..."):
-            ko_bonus, ko_news = get_korean_news(target, si.get("name", ""))
+        # nb, news_items는 상단 calc_win_rate 호출 시 이미 수집됨 → 재사용
+        ko_bonus, ko_news = nb, news_items
 
         if ko_news:
             pos_c  = sum(1 for n in ko_news if n["sentiment"] == "Positive")
