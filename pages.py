@@ -230,9 +230,32 @@ def _action_plan(fw):
 def render_main_page():
     st.markdown(
         '<h2 style="font-size:22px;font-weight:700;color:#1A1D23;margin:0 0 4px;">🔭 Signum</h2>'
-        '<p style="font-size:13px;color:#6B7280;margin:0 0 16px;">시장 신호 기반 종목 분석</p>',
+        '<p style="font-size:13px;color:#6B7280;margin:0 0 12px;">시장 신호 기반 종목 분석</p>',
         unsafe_allow_html=True
     )
+
+    # ── 앱 사용법 안내 (접이식) ──────────────────────────────────
+    with st.expander('📖 이 앱을 어떻게 쓰면 좋을까요?', expanded=False):
+        st.markdown(
+            '<div style="font-size:12px;color:#374151;line-height:1.9;">'
+            '<b style="font-size:13px;">Signum은 매수 타이밍을 알려주는 앱이 아닙니다.</b><br>'
+            '주가 위치 · 거시 환경 · 모멘텀 · 뉴스를 종합해 '
+            '<b>지금 이 종목의 환경이 유리한지 불리한지</b>를 수치로 보여주는 도구예요.<br><br>'
+            '<b>✅ 이렇게 쓰면 효과적입니다</b><br>'
+            '· 이미 보유한 종목에서 <b>비중을 늘릴지, 줄일지, 유지할지</b> 판단할 때<br>'
+            '· 승률이 낮은 종목이 있다면 → 추가 매수 자제, 손절 라인 점검<br>'
+            '· 승률이 높은 종목이 있다면 → 분할 매수 고려 (확신은 금물)<br>'
+            '· 포트폴리오 전체를 보면서 <b>가장 취약한 종목</b>을 파악할 때<br><br>'
+            '<b>⚠ 이것만은 주의하세요</b><br>'
+            '· 승률 수치는 <b>과거 통계 기반</b>이에요. 미래를 예측하지 않아요.<br>'
+            '· 전쟁 휴전, 금리 발표 같은 <b>돌발 이벤트는 어떤 지표도 예측 못 해요.</b><br>'
+            '· 승률이 낮다고 반드시 떨어지는 것도, 높다고 반드시 오르는 것도 아니에요.<br>'
+            '· 이 앱은 <b>가속 페달이 아니라 브레이크</b>예요. 리스크 관리 도구로 쓰세요.<br><br>'
+            '<span style="color:#9CA3AF;font-size:11px;">'
+            '백테스트 탭에서 이 앱의 과거 신호 적중률을 직접 확인할 수 있어요.</span>'
+            '</div>',
+            unsafe_allow_html=True
+        )
 
     # 거시 지표
     st.markdown('<div class="section-hdr">📡 주요 거시 지표</div>', unsafe_allow_html=True)
