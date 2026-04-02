@@ -466,13 +466,18 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
 
     # 3. 뉴스 (시간 감쇠)
     if news_items:
-        news_adj = round(sum(
+        _raw_sum = sum(
             _news_decay(
                 6.0 if n["sentiment"]=="Positive" else -6.0 if n["sentiment"]=="Negative" else 0.0,
                 n.get("pub_date_raw",""),
                 n.get("title","")
             ) for n in news_items
-        ), 1)
+        )
+        # 모두 Neutral(0)이면 news_bonus(get_korean_news가 계산한 nb) 사용
+        if _raw_sum == 0.0 and news_bonus != 0.0:
+            news_adj = round(news_bonus * 0.8, 1)
+        else:
+            news_adj = round(_raw_sum, 1)
     else:
         news_adj = round(news_bonus * 0.5, 1)
 
@@ -725,9 +730,14 @@ def get_korean_news(ticker, stock_name=""):
                 src   = se.text.strip() if se is not None else "Google News"
                 if not title or title in seen: continue
                 seen.add(title)
-                if any(kw in title for kw in pos_kw):   sentiment = "Positive"
-                elif any(kw in title for kw in neg_kw): sentiment = "Negative"
-                else:                                   sentiment = "Neutral"
+                title_lo = title.lower()
+                # 부정 먼저 체크 (더 보수적)
+                if any(kw in title_lo for kw in [k.lower() for k in neg_kw]):
+                    sentiment = "Negative"
+                elif any(kw in title_lo for kw in [k.lower() for k in pos_kw]):
+                    sentiment = "Positive"
+                else:
+                    sentiment = "Neutral"
                 news_type = _classify_news(title)   # 지속성 분류
                 all_news.append({
                     "title": title, "link": link, "source": src,
@@ -742,9 +752,9 @@ def get_korean_news(ticker, stock_name=""):
     subset = all_news[:8]
     decayed = sum(
         _news_decay(
-            4.0 if n["sentiment"]=="Positive" else -4.0 if n["sentiment"]=="Negative" else 0.0,
+            5.0 if n["sentiment"]=="Positive" else -5.0 if n["sentiment"]=="Negative" else 0.0,
             n.get("pub_date_raw",""),
-            n.get("title","")   # ← 지속성 분류
+            n.get("title","")
         ) for n in subset
     )
     return round(decayed, 1), subset
