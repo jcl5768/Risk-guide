@@ -1529,7 +1529,8 @@ def get_batch_portfolio_data(tickers_tuple):
             zs, price      = get_z_and_price(ticker)
             sk, cfg, inds  = get_sector_analysis(ticker)
             # 한국어 뉴스로 단일화 (감쇠 적용 가능, 더 정확)
-            nb, items      = get_korean_news(ticker)
+            _sname         = TICKER_NAME_MAP.get(ticker, "")
+            nb, items      = get_korean_news(ticker, _sname)
             win, breakdown = calc_win_rate(
                 zs, inds, nb, stock_ticker=ticker, news_items=items,
             )
