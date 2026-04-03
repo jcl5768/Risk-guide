@@ -17,56 +17,148 @@ from engine import (
 
 
 def apply_custom_style():
-    st.markdown("""
+    dark = st.session_state.get("dark_mode", False)
+
+    # ── 라이트 / 다크 토큰 ───────────────────────────────────────────
+    if dark:
+        bg        = "#0F1117"   # 앱 배경
+        bg2       = "#1A1D23"   # 카드 배경
+        bg3       = "#22262F"   # 서브 카드 / hover
+        border    = "#2D3139"   # 구분선
+        txt_main  = "#F0F2F5"   # 본문 텍스트
+        txt_sub   = "#9CA3AF"   # 보조 텍스트
+        txt_muted = "#6B7280"   # 흐린 텍스트
+        header_bg = "#1A1D23"
+        sidebar_bg= "#1A1D23"
+        input_bg  = "#22262F"
+        tab_bg    = "#22262F"
+        tab_sel   = "#2D3139"
+        action_th = "#22262F"
+        news_neu  = "#22262F"
+        news_neu_border = "#374151"
+        btn_bg    = "#22262F"
+        btn_border= "#374151"
+        btn_txt   = "#D1D5DB"
+        btn_hover = "#2D3139"
+        lv1_bg="#1E3A5F"; lv1_txt="#60A5FA"; lv1_bdr="#1D4ED8"
+        lv2_bg="#3B1F0A"; lv2_txt="#FB923C"; lv2_bdr="#92400E"
+        lv3_bg="#2E1065"; lv3_txt="#A78BFA"; lv3_bdr="#5B21B6"
+        badge_g_bg="#022C22"; badge_g_bdr="#065F46"
+        badge_y_bg="#2D1B00"; badge_y_bdr="#92400E"
+        badge_r_bg="#2D0A0A"; badge_r_bdr="#991B1B"
+        sns_h_bg="#2D0A0A"; sns_m_bg="#2D1B00"; sns_l_bg="#1F2937"
+        stat_bg   = "#22262F"
+    else:
+        bg        = "#F7F8FA"
+        bg2       = "#FFFFFF"
+        bg3       = "#F9FAFB"
+        border    = "#E8EAED"
+        txt_main  = "#1A1D23"
+        txt_sub   = "#6B7280"
+        txt_muted = "#9CA3AF"
+        header_bg = "#FFFFFF"
+        sidebar_bg= "#FFFFFF"
+        input_bg  = "#FFFFFF"
+        tab_bg    = "#F3F4F6"
+        tab_sel   = "#FFFFFF"
+        action_th = "#F9FAFB"
+        news_neu  = "#F9FAFB"
+        news_neu_border = "#D1D5DB"
+        btn_bg    = "#FFFFFF"
+        btn_border= "#D1D5DB"
+        btn_txt   = "#374151"
+        btn_hover = "#F9FAFB"
+        lv1_bg="#EFF6FF"; lv1_txt="#2563EB"; lv1_bdr="#BFDBFE"
+        lv2_bg="#FFF7ED"; lv2_txt="#EA580C"; lv2_bdr="#FED7AA"
+        lv3_bg="#F5F3FF"; lv3_txt="#7C3AED"; lv3_bdr="#DDD6FE"
+        badge_g_bg="#ECFDF5"; badge_g_bdr="#A7F3D0"
+        badge_y_bg="#FFFBEB"; badge_y_bdr="#FDE68A"
+        badge_r_bg="#FEF2F2"; badge_r_bdr="#FECACA"
+        sns_h_bg="#FEF2F2"; sns_m_bg="#FFFBEB"; sns_l_bg="#F9FAFB"
+        stat_bg   = "#FFFFFF"
+
+    st.markdown(f"""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
-.stApp{background:#F7F8FA;color:#1A1D23;font-family:'Inter',sans-serif;}
-header[data-testid="stHeader"]{background:#FFFFFF;border-bottom:1px solid #E8EAED;}
-.stDeployButton{display:none;} #MainMenu{display:none;} footer{display:none;}
-section[data-testid="stSidebar"]{background:#FFFFFF;border-right:1px solid #E8EAED;}
-.macro-card{background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;padding:14px 18px;}
-.section-hdr{font-size:11px;font-weight:600;color:#6B7280;letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #E8EAED;}
-.stock-card{background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;padding:16px 18px;}
-.badge-green{background:#ECFDF5;color:#059669;border:1px solid #A7F3D0;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;display:inline-block;}
-.badge-yellow{background:#FFFBEB;color:#D97706;border:1px solid #FDE68A;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;display:inline-block;}
-.badge-red{background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;display:inline-block;}
-.lv1{background:#EFF6FF;color:#2563EB;border:1px solid #BFDBFE;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;}
-.lv2{background:#FFF7ED;color:#EA580C;border:1px solid #FED7AA;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;}
-.lv3{background:#F5F3FF;color:#7C3AED;border:1px solid #DDD6FE;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;}
-.news-pos{background:#ECFDF5;border-left:3px solid #059669;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:10px;}
-.news-neg{background:#FEF2F2;border-left:3px solid #DC2626;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:10px;}
-.news-neu{background:#F9FAFB;border-left:3px solid #D1D5DB;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:10px;}
-.ind-card{background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;padding:12px 16px;margin-bottom:8px;}
-.sensitivity-high{background:#FEF2F2;color:#DC2626;border:1px solid #FECACA;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;}
-.sensitivity-mid{background:#FFFBEB;color:#D97706;border:1px solid #FDE68A;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;}
-.sensitivity-low{background:#F9FAFB;color:#6B7280;border:1px solid #E8EAED;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;}
-.stat-box{background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;padding:10px;text-align:center;}
-/* 기간 선택 버튼 — 선택된 것 강조 */
-.period-btn-active button{background:#1A1D23 !important;color:#FFFFFF !important;border-color:#1A1D23 !important;font-weight:700 !important;}
-/* 기간 버튼 — 작고 심플, 한 줄 */
-div[data-testid="stButton"][data-key^="p_"] > button{font-size:11px !important;padding:2px 4px !important;height:26px !important;min-height:0 !important;}
-/* Action Plan 테이블 */
-.action-table{width:100%;border-collapse:collapse;font-size:12px;}
-.action-table th{background:#F9FAFB;color:#6B7280;font-weight:600;padding:8px 12px;text-align:left;border-bottom:1px solid #E8EAED;}
-.action-table td{padding:10px 12px;border-bottom:1px solid #F3F4F6;color:#374151;vertical-align:top;}
-.action-table tr:last-child td{border-bottom:none;}
-div[data-testid="stButton"] button{background:#FFFFFF;color:#374151;border:1px solid #D1D5DB;border-radius:7px;font-size:12px;font-weight:500;padding:6px 16px;}
-div[data-testid="stButton"] button:hover{background:#F9FAFB;border-color:#9CA3AF;}
-div[data-testid="stNumberInput"] input,div[data-testid="stTextInput"] input,div[data-testid="stSelectbox"] div{background:#FFFFFF !important;border:1px solid #D1D5DB !important;border-radius:7px !important;color:#1A1D23 !important;font-size:13px !important;}
-.stTabs [data-baseweb="tab-list"]{gap:2px;background:#F3F4F6;border-radius:8px;padding:3px;border:1px solid #E8EAED;}
-.stTabs [data-baseweb="tab"]{height:32px;font-size:12px;font-weight:500;color:#6B7280;border-radius:6px;padding:0 14px;}
-.stTabs [aria-selected="true"]{background:#FFFFFF !important;color:#1A1D23 !important;box-shadow:0 1px 3px rgba(0,0,0,0.1);}
-.stSlider > div > div > div{background:#2563EB !important;}
-.stSpinner > div{border-top-color:#2563EB !important;}
-/* 모바일 최적화 */
-@media (max-width: 768px) {
-  .stock-card{padding:12px 14px !important;}
-  .ind-card{padding:10px 12px !important;}
-  .action-table td{padding:8px 8px !important;font-size:11px !important;}
-  .action-table th{padding:6px 8px !important;font-size:11px !important;}
-  .stTabs [data-baseweb="tab"]{padding:0 8px !important;font-size:11px !important;}
-  section[data-testid="stSidebar"]{min-width:260px !important;}
-}
+
+/* ── 기본 배경 / 텍스트 ── */
+.stApp{{background:{bg};color:{txt_main};font-family:'Inter',sans-serif;}}
+header[data-testid="stHeader"]{{background:{header_bg};border-bottom:1px solid {border};}}
+.stDeployButton{{display:none;}} #MainMenu{{display:none;}} footer{{display:none;}}
+section[data-testid="stSidebar"]{{background:{sidebar_bg};border-right:1px solid {border};}}
+
+/* ── 카드 컴포넌트 ── */
+.macro-card{{background:{bg2};border:1px solid {border};border-radius:10px;padding:14px 18px;}}
+.section-hdr{{font-size:11px;font-weight:600;color:{txt_sub};letter-spacing:1px;text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid {border};}}
+.stock-card{{background:{bg2};border:1px solid {border};border-radius:10px;padding:16px 18px;}}
+.ind-card{{background:{bg2};border:1px solid {border};border-radius:8px;padding:12px 16px;margin-bottom:8px;}}
+.stat-box{{background:{stat_bg};border:1px solid {border};border-radius:8px;padding:10px;text-align:center;}}
+
+/* ── 배지 ── */
+.badge-green{{background:{badge_g_bg};color:#059669;border:1px solid {badge_g_bdr};border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;display:inline-block;}}
+.badge-yellow{{background:{badge_y_bg};color:#D97706;border:1px solid {badge_y_bdr};border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;display:inline-block;}}
+.badge-red{{background:{badge_r_bg};color:#DC2626;border:1px solid {badge_r_bdr};border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;display:inline-block;}}
+
+/* ── Lv 배지 ── */
+.lv1{{background:{lv1_bg};color:{lv1_txt};border:1px solid {lv1_bdr};border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;}}
+.lv2{{background:{lv2_bg};color:{lv2_txt};border:1px solid {lv2_bdr};border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;}}
+.lv3{{background:{lv3_bg};color:{lv3_txt};border:1px solid {lv3_bdr};border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;}}
+
+/* ── 뉴스 카드 ── */
+.news-pos{{background:{"#022C22" if dark else "#ECFDF5"};border-left:3px solid #059669;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:10px;}}
+.news-neg{{background:{"#2D0A0A" if dark else "#FEF2F2"};border-left:3px solid #DC2626;padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:10px;}}
+.news-neu{{background:{news_neu};border-left:3px solid {news_neu_border};padding:12px 16px;border-radius:0 8px 8px 0;margin-bottom:10px;}}
+
+/* ── Sensitivity 배지 ── */
+.sensitivity-high{{background:{sns_h_bg};color:#DC2626;border:1px solid #FECACA;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;}}
+.sensitivity-mid{{background:{sns_m_bg};color:#D97706;border:1px solid #FDE68A;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;}}
+.sensitivity-low{{background:{sns_l_bg};color:{txt_sub};border:1px solid {border};border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;}}
+
+/* ── 기간 버튼 ── */
+.period-btn-active button{{background:{txt_main} !important;color:{bg} !important;border-color:{txt_main} !important;font-weight:700 !important;}}
+div[data-testid="stButton"][data-key^="p_"] > button{{font-size:11px !important;padding:2px 4px !important;height:26px !important;min-height:0 !important;}}
+
+/* ── Action Plan 테이블 ── */
+.action-table{{width:100%;border-collapse:collapse;font-size:12px;}}
+.action-table th{{background:{action_th};color:{txt_sub};font-weight:600;padding:8px 12px;text-align:left;border-bottom:1px solid {border};}}
+.action-table td{{padding:10px 12px;border-bottom:1px solid {border};color:{txt_main};vertical-align:top;}}
+.action-table tr:last-child td{{border-bottom:none;}}
+
+/* ── Streamlit 기본 버튼 ── */
+div[data-testid="stButton"] button{{background:{btn_bg};color:{btn_txt};border:1px solid {btn_border};border-radius:7px;font-size:12px;font-weight:500;padding:6px 16px;}}
+div[data-testid="stButton"] button:hover{{background:{btn_hover};border-color:{txt_muted};}}
+
+/* ── 입력창 ── */
+div[data-testid="stNumberInput"] input,
+div[data-testid="stTextInput"] input,
+div[data-testid="stSelectbox"] div{{background:{input_bg} !important;border:1px solid {btn_border} !important;border-radius:7px !important;color:{txt_main} !important;font-size:13px !important;}}
+div[data-testid="stTextArea"] textarea{{background:{input_bg} !important;border:1px solid {btn_border} !important;color:{txt_main} !important;font-size:12px !important;border-radius:7px !important;}}
+
+/* ── 탭 ── */
+.stTabs [data-baseweb="tab-list"]{{gap:2px;background:{tab_bg};border-radius:8px;padding:3px;border:1px solid {border};}}
+.stTabs [data-baseweb="tab"]{{height:32px;font-size:12px;font-weight:500;color:{txt_sub};border-radius:6px;padding:0 14px;}}
+.stTabs [aria-selected="true"]{{background:{tab_sel} !important;color:{txt_main} !important;box-shadow:0 1px 3px rgba(0,0,0,{"0.3" if dark else "0.1"});}}
+
+/* ── 기타 ── */
+.stSlider > div > div > div{{background:#2563EB !important;}}
+.stSpinner > div{{border-top-color:#2563EB !important;}}
+
+/* ── expander ── */
+div[data-testid="stExpander"]{{background:{bg2};border:1px solid {border} !important;border-radius:8px;}}
+div[data-testid="stExpander"] summary{{color:{txt_main};}}
+
+/* ── st.info / st.success / st.error ── */
+div[data-testid="stAlert"]{{background:{bg2} !important;border-color:{border} !important;color:{txt_main} !important;}}
+
+/* ── 모바일 최적화 ── */
+@media (max-width: 768px) {{
+  .stock-card{{padding:12px 14px !important;}}
+  .ind-card{{padding:10px 12px !important;}}
+  .action-table td{{padding:8px 8px !important;font-size:11px !important;}}
+  .action-table th{{padding:6px 8px !important;font-size:11px !important;}}
+  .stTabs [data-baseweb="tab"]{{padding:0 8px !important;font-size:11px !important;}}
+  section[data-testid="stSidebar"]{{min-width:260px !important;}}
+}}
 </style>
 """, unsafe_allow_html=True)
 
@@ -401,9 +493,9 @@ def render_main_page():
         _status.update(label=f"✅ {len(portfolio)}개 종목 분석 완료", state="complete", expanded=False)
 
     for rs in range(0, len(portfolio), 4):
-        row  = portfolio[rs: rs + 4]
+        row  = list(enumerate(portfolio[rs: rs + 4], start=rs))
         cols = st.columns(len(row))
-        for col, stock in zip(cols, row):
+        for col, (pi, stock) in zip(cols, row):
             with col:
                 _d        = _batch.get(stock["ticker"], {})
                 zs        = _d.get("z", 0.0)
@@ -471,7 +563,7 @@ def render_main_page():
                 if weight_warn:
                     st.markdown(weight_warn, unsafe_allow_html=True)
                 st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
-                if st.button("상세 분석 →", key=f"go_{stock['ticker']}_{rs}"):
+                if st.button("상세 분석 →", key=f"go_{stock['ticker']}_{pi}"):
                     st.session_state.selected = stock["ticker"]
                     st.session_state.page     = "detail"
                     st.rerun()
@@ -1988,10 +2080,6 @@ def render_detail_page():
                 f'<div style="font-size:11px;color:#6B7280;">{desc}</div>'
                 f'</div>'
             )
-
-        # 최종 합산 검증
-        clamp_yn = "⚠ clamp 적용됨" if total_raw != fw else "✓ 정상 범위"
-        clamp_clr = "#D97706" if total_raw != fw else "#059669"
 
         # 최종 합산 검증
         clamp_yn  = "⚠ clamp 적용됨" if total_raw != fw else "✓ 정상 범위"
