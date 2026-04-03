@@ -906,10 +906,35 @@ TICKER_NAME_MAP = {
     "EXR":"Extra Space Storage","AVB":"AvalonBay",
 }
 
+# ── FDR 동적 티커 로더 ──────────────────────────────────────────────────────
+@st.cache_data(ttl=86400)   # 하루 1번만 갱신
+def _load_fdr_tickers():
+    """
+    FinanceDataReader로 S&P500 + NASDAQ 상장 종목 이름 맵 반환.
+    실패하면 빈 dict 반환 (TICKER_NAME_MAP 하드코딩이 fallback).
+    """
+    try:
+        import FinanceDataReader as fdr
+        sp500 = fdr.StockListing("S&P500")[["Symbol", "Name"]].dropna()
+        result = {row["Symbol"]: row["Name"] for _, row in sp500.iterrows()}
+        return result
+    except Exception:
+        return {}
+
+
+def _get_full_name_map():
+    """하드코딩 TICKER_NAME_MAP + FDR 동적 데이터 병합. 하드코딩이 우선."""
+    fdr_map = _load_fdr_tickers()
+    merged  = {**fdr_map, **TICKER_NAME_MAP}   # 하드코딩이 덮어씀
+    return merged
+
+
 def search_tickers(query):
     if not query or len(query) < 1: return []
     q = query.upper().strip()
     results = []; seen = set()
+
+    full_name_map = _get_full_name_map()
 
     def _add(ticker, name, priority):
         if ticker in seen: return
@@ -917,22 +942,26 @@ def search_tickers(query):
         sec = ETF_MAP.get(ticker, "Unknown")
         cfg = SECTOR_CONFIG.get(sec, SECTOR_CONFIG["Unknown"])
         results.append({
-            "ticker": ticker, "name": name or TICKER_NAME_MAP.get(ticker, ticker),
+            "ticker": ticker, "name": name or full_name_map.get(ticker, ticker),
             "sector": sec, "sector_label": cfg["label"],
             "sector_icon": cfg["icon"], "priority": priority,
         })
 
     # 1순위: ETF_MAP 직접 일치
-    if q in ETF_MAP: _add(q, TICKER_NAME_MAP.get(q, q), 0)
-    # 2순위: 티커 앞글자 일치
+    if q in ETF_MAP: _add(q, full_name_map.get(q, q), 0)
+    # 2순위: 티커 앞글자 일치 (ETF_MAP + FDR 전체)
     for t in ETF_MAP:
-        if t.startswith(q) and t != q: _add(t, TICKER_NAME_MAP.get(t, t), 1)
+        if t.startswith(q) and t != q: _add(t, full_name_map.get(t, t), 1)
+    for t in full_name_map:
+        if t.startswith(q) and t != q: _add(t, full_name_map.get(t, t), 1)
     # 3순위: 티커 부분 일치
     for t in ETF_MAP:
-        if q in t and not t.startswith(q): _add(t, TICKER_NAME_MAP.get(t, t), 2)
+        if q in t and not t.startswith(q): _add(t, full_name_map.get(t, t), 2)
+    for t in full_name_map:
+        if q in t and not t.startswith(q): _add(t, full_name_map.get(t, t), 2)
     # 4순위: 종목명 검색 (한글/영문)
     q_lower = query.lower()
-    for t, name in TICKER_NAME_MAP.items():
+    for t, name in full_name_map.items():
         if q_lower in name.lower() and t not in seen: _add(t, name, 3)
 
     results.sort(key=lambda x: (x["priority"], x["ticker"]))
@@ -1529,7 +1558,7 @@ def get_batch_portfolio_data(tickers_tuple):
             zs, price      = get_z_and_price(ticker)
             sk, cfg, inds  = get_sector_analysis(ticker)
             # 한국어 뉴스로 단일화 (감쇠 적용 가능, 더 정확)
-            _sname         = TICKER_NAME_MAP.get(ticker, "")
+            _sname         = _get_full_name_map().get(ticker, TICKER_NAME_MAP.get(ticker, ""))
             nb, items      = get_korean_news(ticker, _sname)
             win, breakdown = calc_win_rate(
                 zs, inds, nb, stock_ticker=ticker, news_items=items,
