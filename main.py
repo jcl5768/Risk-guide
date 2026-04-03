@@ -21,6 +21,7 @@ def init_session():
     if "show_add"      not in st.session_state: st.session_state.show_add      = False
     if "chart_period"  not in st.session_state: st.session_state.chart_period  = "1개월"
     if "open_sidebar"  not in st.session_state: st.session_state.open_sidebar  = False
+    if "dark_mode"     not in st.session_state: st.session_state.dark_mode     = False
 
 init_session()
 
@@ -250,8 +251,13 @@ with st.sidebar:
 
     st.markdown("---")
     with st.expander("⚙️ 설정"):
-        # ── 투자 모드 선택 ──────────────────────────────────────────
-
+        # ── 다크모드 토글 ────────────────────────────────────────────
+        dark = st.session_state.dark_mode
+        mode_label = "☀️ 라이트모드로 전환" if dark else "🌙 다크모드로 전환"
+        if st.button(mode_label, use_container_width=True, key="toggle_dark"):
+            st.session_state.dark_mode = not dark
+            st.rerun()
+        st.markdown("---")
 
         # ── 포트폴리오 저장 (인라인 방식) ───────────────────────────────
         if st.session_state.portfolio:
