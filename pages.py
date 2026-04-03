@@ -1281,7 +1281,7 @@ def render_detail_page():
                 f'⑤ <b>시장 국면</b>: 전체 시장이 Quiet/Trending/Volatile 중 어느 상태인지</div>'
                 f'<div style="font-size:12px;color:#6B7280;margin-bottom:12px;">'
                 f'승률 <b style="color:{sv_};">{fw:.0f}%</b> = '
-                f'50(기본) {adj_pos_lv2:+.1f}(가격) {mac_s if mac_s else weighted_z*15:+.1f}(거시)'
+                f'50(기본) {adj_pos_lv2:+.1f}(가격) {breakdown.get("macro_score", weighted_z*15):+.1f}(거시)'
                 f' {news_adj:+.1f}(뉴스) {adj_mom_lv2:+.1f}(모멘텀){_off_lv2} {regime_lv2:+.1f}(국면)</div>'
                 f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:8px;">'
                 f'모멘텀 상세: {mom_detail}</div>'
