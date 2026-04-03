@@ -3,4 +3,4 @@ plotly
 pandas
 yfinance
 numpy
-FinanceDataReader
+Finance-DataReader
