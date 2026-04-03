@@ -1259,6 +1259,12 @@ def render_detail_page():
                     f'<span style="font-size:13px;font-weight:700;color:{c};">{val}</span></div>'
                 )
 
+            adj_pos_lv2   = breakdown.get("adj_position",    0)
+            adj_mom_lv2   = breakdown.get("adj_momentum",    0)
+            regime_lv2    = breakdown.get("regime_adj",      0)
+            mom_off_lv2   = breakdown.get("momentum_offset", 0)
+            _off_lv2      = f" {mom_off_lv2:+.1f}(오프셋)" if mom_off_lv2 != 0 else ""
+
             st.markdown(
                 f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
                 f'padding:16px;margin-bottom:10px;">'
@@ -1267,14 +1273,16 @@ def render_detail_page():
                 f'<span style="font-size:12px;font-weight:600;color:#1A1D23;">분석 근거</span>'
                 f'</div>'
                 f'<div style="background:#FFF7ED;border-radius:6px;padding:8px 12px;margin-bottom:10px;font-size:11px;color:#92400E;line-height:1.6;">'
-                f'📌 <b>Lv.2는 승률을 3가지 근거로 분해</b>해서 보여줍니다.<br>'
-                f'① <b>가격 위치</b>: 현재가가 1년 중 어느 위치인지 (낮을수록 저점 매수 유리)<br>'
+                f'📌 <b>Lv.2는 승률을 5가지 근거로 분해</b>해서 보여줍니다.<br>'
+                f'① <b>가격 위치</b>: 현재가가 1년 중 어느 위치인지 (낮을수록 저점 매수 유리, ×0.7 적용)<br>'
                 f'② <b>거시 환경</b>: 금리·달러·VIX 등 시장 지표들이 이 종목에 유리한지 불리한지<br>'
-                f'③ <b>뉴스 감성</b>: 최근 뉴스의 긍정/부정 비율 (오래된 뉴스는 감쇠 적용)</div>'
+                f'③ <b>뉴스 감성</b>: 최근 뉴스의 긍정/부정 비율 (오래된 뉴스는 감쇠 적용)<br>'
+                f'④ <b>모멘텀</b>: 추세 지속성 + 거래량 + 52주 신고가 근접도 (×1.3 적용)<br>'
+                f'⑤ <b>시장 국면</b>: 전체 시장이 Quiet/Trending/Volatile 중 어느 상태인지</div>'
                 f'<div style="font-size:12px;color:#6B7280;margin-bottom:12px;">'
                 f'승률 <b style="color:{sv_};">{fw:.0f}%</b> = '
-                f'기본(50) + 가격위치({pos_score:+.1f}) + 거시환경({macro_contrib}%p) '
-                f'+ 뉴스({news_adj:+.1f}) + 모멘텀({mom_score:+.1f})</div>'
+                f'50(기본) {adj_pos_lv2:+.1f}(가격) {mac_s if mac_s else weighted_z*15:+.1f}(거시)'
+                f' {news_adj:+.1f}(뉴스) {adj_mom_lv2:+.1f}(모멘텀){_off_lv2} {regime_lv2:+.1f}(국면)</div>'
                 f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:8px;">'
                 f'모멘텀 상세: {mom_detail}</div>'
                 f'{lv2_rows}'
@@ -1920,13 +1928,16 @@ def render_detail_page():
             unsafe_allow_html=True
         )
 
-        # 항목별 기여도 분해
-        pos_s  = breakdown.get("position_score", 0)
-        mac_s  = breakdown.get("macro_score", 0)
-        news_s = breakdown.get("news_bonus", 0)
-        pct_v  = breakdown.get("percentile", 50)
-        mac_z  = breakdown.get("macro_z", 0)
-        total_raw = breakdown.get("total_raw", 50)
+        # 항목별 기여도 분해 — 실제 calc_win_rate adj값 사용
+        adj_pos   = breakdown.get("adj_position",    0)   # position_score * 0.7
+        mac_s     = breakdown.get("macro_score",     0)
+        news_s    = breakdown.get("news_bonus",      0)
+        mom_s     = breakdown.get("adj_momentum",    0)   # momentum_score * 1.3
+        regime_s  = breakdown.get("regime_adj",      0)
+        mom_off   = breakdown.get("momentum_offset", 0)
+        pct_v     = breakdown.get("percentile",      50)
+        mac_z     = breakdown.get("macro_z",         0)
+        total_raw = breakdown.get("total_raw",       50)
 
         # 각 항목 신뢰도 판단
         def score_badge(score, item):
@@ -1943,18 +1954,23 @@ def render_detail_page():
                 elif abs(score) > 2: return "보통 신호", "#D97706"
                 else: return "약한 신호", "#9CA3AF"
 
-        p_badge, p_clr = score_badge(pos_s, "position")
-        m_badge, m_clr = score_badge(mac_s, "macro")
-        n_badge, n_clr = score_badge(news_s, "news")
+        p_badge,  p_clr  = score_badge(adj_pos, "position")
+        m_badge,  m_clr  = score_badge(mac_s,   "macro")
+        n_badge,  n_clr  = score_badge(news_s,  "news")
+        mo_badge, mo_clr = score_badge(mom_s,   "news")
 
         verify_rows = ""
-        for lbl, base, score, badge, clr, desc in [
-            ("📍 가격위치",  50, pos_s,  p_badge, p_clr,
-             f"1년 중 {pct_v:.0f}%ile — {'저점권 (유리)' if pct_v < 30 else '고점권 (불리)' if pct_v > 70 else '중간권'}"),
-            ("📡 거시환경",  0,  mac_s,  m_badge, m_clr,
+        for lbl, score, badge, clr, desc in [
+            ("📍 가격위치", adj_pos,  p_badge,  p_clr,
+             f"1년 중 {pct_v:.0f}%ile — {'저점권 (유리)' if pct_v < 30 else '고점권 (불리)' if pct_v > 70 else '중간권'} (×0.7 조정)"),
+            ("📡 거시환경", mac_s,    m_badge,  m_clr,
              f"가중Z {mac_z:+.3f}σ → {'호재 우세' if mac_z > 0.2 else '악재 우세' if mac_z < -0.2 else '중립'}"),
-            ("📰 뉴스보정",  0,  news_s, n_badge, n_clr,
+            ("📰 뉴스보정", news_s,   n_badge,  n_clr,
              f"감쇠 적용 후 {news_s:+.1f}점 — {'긍정 우세' if news_s > 0 else '부정 우세' if news_s < 0 else '중립'}"),
+            ("🚀 모멘텀",  mom_s,    mo_badge, mo_clr,
+             f"추세+거래량+신고가 (×1.3 조정){f' · 오프셋 {mom_off:+.1f}' if mom_off != 0 else ''}"),
+            ("🌐 시장국면", regime_s, "참고",   "#6B7280",
+             "시장 레짐 보정 (Quiet/Trending/Volatile)"),
         ]:
             bar_w = min(100, abs(score) / 20 * 100)
             bar_clr = "#059669" if score >= 0 else "#DC2626"
@@ -1977,14 +1993,20 @@ def render_detail_page():
         clamp_yn = "⚠ clamp 적용됨" if total_raw != fw else "✓ 정상 범위"
         clamp_clr = "#D97706" if total_raw != fw else "#059669"
 
+        # 최종 합산 검증
+        clamp_yn  = "⚠ clamp 적용됨" if total_raw != fw else "✓ 정상 범위"
+        clamp_clr = "#D97706" if total_raw != fw else "#059669"
+        _off_txt  = f" {mom_off:+.1f}(오프셋)" if mom_off != 0 else ""
+
         st.markdown(
             verify_rows +
             f'<div style="background:#F9FAFB;border:1px solid #E8EAED;border-radius:8px;'
             f'padding:10px 14px;">'
             f'<div style="font-size:11px;color:#6B7280;margin-bottom:4px;">합산 검증</div>'
             f'<div style="font-size:12px;color:#374151;">'
-            f'50(기본) {pos_s:+.1f}(가격) {mac_s:+.1f}(거시) {news_s:+.1f}(뉴스) '
-            f'= <b style="color:#1A1D23;">{total_raw:.1f}점</b> → '
+            f'50(기본) {adj_pos:+.1f}(가격) {mac_s:+.1f}(거시) {news_s:+.1f}(뉴스)'
+            f' {mom_s:+.1f}(모멘텀){_off_txt} {regime_s:+.1f}(국면)'
+            f' = <b style="color:#1A1D23;">{total_raw:.1f}점</b> → '
             f'<b style="color:{sv_};">{fw:.1f}%</b> '
             f'<span style="font-size:10px;color:{clamp_clr};">{clamp_yn}</span></div>'
             f'</div>',
