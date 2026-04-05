@@ -379,8 +379,14 @@ def render_main_page():
     # ── Lv.1: 포트폴리오 날씨 ────────────────────────────────────────
     if portfolio:
         fg_score, fg_label, fg_clr = get_fear_greed()
-        with st.spinner("Lv.1 분석 중..."):
-            avg_win, w_icon, w_label, w_clr, w_summary = get_portfolio_lv1(portfolio)
+        _lv1_ph = st.empty()
+        _lv1_ph.markdown(
+            '<div style="background:#F9FAFB;border:1px solid #E8EAED;border-radius:8px;'
+            'padding:8px 14px;font-size:12px;color:#9CA3AF;">⏳ 포트폴리오 날씨 계산 중...</div>',
+            unsafe_allow_html=True
+        )
+        avg_win, w_icon, w_label, w_clr, w_summary = get_portfolio_lv1(portfolio)
+        _lv1_ph.empty()
         st.markdown(
             f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
             f'padding:14px 18px;margin-bottom:16px;">'
@@ -414,8 +420,14 @@ def render_main_page():
         )
 
         # ── 포트폴리오 전체 VaR ──────────────────────────────────────
-        with st.spinner("포트폴리오 리스크 계산 중..."):
-            pvar = calc_portfolio_var(portfolio, confidence=0.95)
+        _var_ph = st.empty()
+        _var_ph.markdown(
+            '<div style="background:#F9FAFB;border:1px solid #E8EAED;border-radius:8px;'
+            'padding:8px 14px;font-size:12px;color:#9CA3AF;">⏳ 리스크(VaR) 계산 중...</div>',
+            unsafe_allow_html=True
+        )
+        pvar = calc_portfolio_var(portfolio, confidence=0.95)
+        _var_ph.empty()
         if pvar:
             v_clr = "#DC2626" if pvar["var_7d"] < -5 else "#D97706" if pvar["var_7d"] < -3 else "#059669"
             st.markdown(
@@ -483,14 +495,31 @@ def render_main_page():
         unsafe_allow_html=True
     )
 
-    # 배치 로딩: 모든 종목 데이터를 한 번에 캐시 조회
+    # ── 배치 로딩 — 종목별 실시간 진행 표시 ─────────────────────────
     _tickers_t = tuple(s["ticker"] for s in portfolio)
-    # 캐시 히트 시 status 박스 즉시 닫힘, 첫 로딩 시만 실제 대기
-    with st.status("📡 시장 데이터 수집 중...", expanded=False) as _status:
-        for _s in portfolio:
-            _status.update(label=f"🔍 {_s['ticker']} 분석 중...")
-        _batch = get_batch_portfolio_data(_tickers_t)
-        _status.update(label=f"✅ {len(portfolio)}개 종목 분석 완료", state="complete", expanded=False)
+    _n = len(portfolio)
+
+    # 캐시 히트 여부: get_batch_portfolio_data는 ttl=600 캐시
+    # 첫 로딩(캐시 미스)이면 종목당 약 3~5초 소요 안내
+    _load_placeholder = st.empty()
+    _prog_placeholder = st.empty()
+
+    if _n > 0:
+        _load_placeholder.markdown(
+            f'<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;'
+            f'padding:10px 14px;margin-bottom:8px;font-size:12px;color:#2563EB;">'
+            f'📡 {_n}개 종목 시장 데이터 수집 중'
+            f'<span style="color:#9CA3AF;font-size:11px;margin-left:8px;">'
+            f'처음 로딩 시 {_n * 3}~{_n * 5}초 소요 · 이후 빠르게 캐시 제공</span></div>',
+            unsafe_allow_html=True
+        )
+        _prog_placeholder.progress(0, text="준비 중...")
+
+    _batch = get_batch_portfolio_data(_tickers_t)
+
+    # 로딩 완료 — 안내 메시지 제거
+    _load_placeholder.empty()
+    _prog_placeholder.empty()
 
     for rs in range(0, len(portfolio), 4):
         row  = list(enumerate(portfolio[rs: rs + 4], start=rs))
@@ -605,61 +634,6 @@ def render_main_page():
                 f'background:{sc["color"]};border-radius:2px;opacity:0.8;"></div></div></div>',
                 unsafe_allow_html=True
             )
-
-    # ── 섹션 A: 목표가 & 손절가 현황 ─────────────────────────────────────────
-    target_stocks = [s for s in portfolio if s.get("target_price", 0) > 0 or s.get("stop_loss", 0) > 0]
-    if target_stocks:
-        st.markdown("<br>", unsafe_allow_html=True)
-        st.markdown('<div class="section-hdr">🎯 목표가 & 손절가 현황</div>', unsafe_allow_html=True)
-        for s in target_stocks:
-            _, cur = get_z_and_price(s["ticker"])
-            tp  = s.get("target_price", 0)
-            sl  = s.get("stop_loss", 0)
-            avg = s.get("avg_price", 0)
-            # 목표가 달성률
-            if tp > 0 and avg > 0:
-                tp_progress = min(100, max(0, (cur - avg) / (tp - avg) * 100)) if tp != avg else 100
-                tp_remain   = round((tp - cur) / cur * 100, 1) if cur > 0 else 0
-                tp_clr      = "#059669" if cur >= tp else "#2563EB"
-            else:
-                tp_progress = 0; tp_remain = 0; tp_clr = "#9CA3AF"
-            # 손절까지 여유
-            if sl > 0 and cur > 0:
-                sl_remain = round((cur - sl) / cur * 100, 1)
-                sl_clr    = "#DC2626" if sl_remain < 5 else "#D97706" if sl_remain < 10 else "#059669"
-                sl_warn   = "⚠ 손절 임박!" if sl_remain < 5 else ""
-            else:
-                sl_remain = 0; sl_clr = "#9CA3AF"; sl_warn = ""
-
-            tp_html = ""
-            if tp > 0:
-                tp_html = (
-                    f'<div style="margin-bottom:6px;">'
-                    f'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">'
-                    f'<span style="color:#6B7280;">🎯 목표가 ${tp:.2f}</span>'
-                    f'<span style="color:{tp_clr};font-weight:600;">'
-                    f'{"달성! ✓" if cur >= tp else f"+{tp_remain:.1f}% 남음"}</span></div>'
-                    f'<div style="height:5px;background:#F3F4F6;border-radius:3px;">'
-                    f'<div style="height:100%;width:{tp_progress:.0f}%;background:{tp_clr};border-radius:3px;"></div></div></div>'
-                )
-            sl_html = ""
-            if sl > 0:
-                sl_html = (
-                    f'<div style="display:flex;justify-content:space-between;font-size:11px;">'
-                    f'<span style="color:#6B7280;">🛑 손절가 ${sl:.2f}</span>'
-                    f'<span style="color:{sl_clr};font-weight:600;">여유 {sl_remain:.1f}% {sl_warn}</span></div>'
-                )
-
-            if tp_html or sl_html:
-                st.markdown(
-                    f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;padding:12px 16px;margin-bottom:8px;">'
-                    f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">'
-                    f'<span style="font-size:14px;font-weight:700;color:#1A1D23;">{s["ticker"]}</span>'
-                    f'<span style="font-size:13px;font-weight:600;color:#374151;">${cur:.2f}</span></div>'
-                    f'{tp_html}{sl_html}</div>',
-                    unsafe_allow_html=True
-                )
-
     # ── 섹션 B: 포트폴리오 수익률 시뮬레이션 (6개월) ─────────────────────────
     if len(portfolio) >= 2:
         st.markdown("<br>", unsafe_allow_html=True)
@@ -867,12 +841,23 @@ def render_detail_page():
         {"name": target, "weight": "—", "avg_price": 0, "shares": 0}
     )
 
-    with st.spinner(f"{target} 분석 중..."):
-        zs, price        = get_z_and_price(target)
-        sk, cfg, inds    = get_sector_analysis(target)
-        nb, news_items   = get_korean_news(target, si.get("name", ""))
-        fw, breakdown    = calc_win_rate(zs, inds, nb, stock_ticker=target, news_items=news_items)
-        weighted_z       = get_weighted_z(inds, breakdown.get("dynamic_weights"))
+    _detail_load = st.empty()
+    _detail_load.markdown(
+        f'<div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;'
+        f'padding:10px 14px;margin-bottom:8px;font-size:12px;color:#2563EB;">'
+        f'🔍 <b>{target}</b> 분석 중'
+        f'<span style="color:#9CA3AF;font-size:11px;margin-left:8px;">'
+        f'주가 · 거시환경 · 뉴스 · 승률 계산 중...</span></div>',
+        unsafe_allow_html=True
+    )
+
+    zs, price        = get_z_and_price(target)
+    sk, cfg, inds    = get_sector_analysis(target)
+    nb, news_items   = get_korean_news(target, si.get("name", ""))
+    fw, breakdown    = calc_win_rate(zs, inds, nb, stock_ticker=target, news_items=news_items)
+    weighted_z       = get_weighted_z(inds, breakdown.get("dynamic_weights"))
+
+    _detail_load.empty()
 
     st_, sc_, sv_ = get_signal(fw)
     pnl = ((price - si["avg_price"]) / si["avg_price"] * 100) \
@@ -952,43 +937,6 @@ def render_detail_page():
             f'<div style="font-size:10px;color:#D97706;padding:0 4px 8px;">{bep_txt}</div>',
             unsafe_allow_html=True
         )
-
-    # ── 목표가 & 손절가 진행 바 (상세 페이지) ────────────────────────────────
-    tp  = si.get("target_price", 0)
-    sl  = si.get("stop_loss", 0)
-    if tp > 0 or sl > 0:
-        avg = si.get("avg_price", 0)
-        tp_html = ""
-        sl_html = ""
-        if tp > 0 and avg > 0:
-            tp_progress = min(100, max(0, (price - avg) / (tp - avg) * 100)) if tp != avg else 100
-            tp_remain   = round((tp - price) / price * 100, 1) if price > 0 else 0
-            tp_clr      = "#059669" if price >= tp else "#2563EB"
-            tp_label    = "달성! 🎉" if price >= tp else f"+{tp_remain:.1f}% 남음"
-            tp_html = (
-                f'<div style="margin-bottom:6px;">'
-                f'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;">'
-                f'<span style="color:#6B7280;">🎯 목표가 ${tp:.2f}</span>'
-                f'<span style="color:{tp_clr};font-weight:600;">{tp_label}</span></div>'
-                f'<div style="height:6px;background:#F3F4F6;border-radius:3px;">'
-                f'<div style="height:100%;width:{tp_progress:.0f}%;background:{tp_clr};border-radius:3px;"></div></div></div>'
-            )
-        if sl > 0 and price > 0:
-            sl_remain = round((price - sl) / price * 100, 1)
-            sl_clr    = "#DC2626" if sl_remain < 5 else "#D97706" if sl_remain < 10 else "#059669"
-            sl_warn   = " ⚠ 손절 임박!" if sl_remain < 5 else ""
-            sl_html = (
-                f'<div style="display:flex;justify-content:space-between;font-size:11px;">'
-                f'<span style="color:#6B7280;">🛑 손절가 ${sl:.2f}</span>'
-                f'<span style="color:{sl_clr};font-weight:600;">여유 {sl_remain:.1f}%{sl_warn}</span></div>'
-            )
-        if tp_html or sl_html:
-            st.markdown(
-                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:8px;'
-                f'padding:10px 14px;margin-bottom:10px;">{tp_html}{sl_html}</div>',
-                unsafe_allow_html=True
-            )
-
     # AI 요약 한 줄 (핵심 드라이버 기반)
     top_pos_inds = sorted([i for i in inds if i["z"]*i["direction"]>0.3],
                           key=lambda x: abs(x["z"]*x["driver_weight"]), reverse=True)
