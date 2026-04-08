@@ -150,104 +150,146 @@ div[data-testid="stExpander"] summary{{color:{txt_main};}}
 /* ── st.info / st.success / st.error ── */
 div[data-testid="stAlert"]{{background:{bg2} !important;border-color:{border} !important;color:{txt_main} !important;}}
 
-/* ── 모바일 최적화 ── */
-/* 기본: 전체 앱 최대 너비 제한 & 여백 조정 */
+/* ── 기본 여백 (데스크탑/모바일 공통) ── */
 .block-container{{
-  padding-left:12px !important;
-  padding-right:12px !important;
-  padding-top:16px !important;
+  padding-left:16px !important;
+  padding-right:16px !important;
+  padding-top:24px !important;
+  padding-bottom:40px !important;
   max-width:100% !important;
 }}
 
-/* 사이드바 열렸을 때 모바일 너비 */
+/* 요소 간 세로 여백 */
+div[data-testid="stVerticalBlock"] > div{{
+  margin-bottom:4px;
+}}
+
+/* 카드 간 여백 */
+.stock-card{{margin-bottom:12px;}}
+.ind-card{{margin-bottom:10px;}}
+
+/* 사이드바 너비 */
 section[data-testid="stSidebar"]{{
   min-width:280px !important;
   max-width:300px !important;
 }}
 
+/* ── number_input 잘림 방지 (사이드바 포함 전체) ── */
+div[data-testid="stNumberInput"]{{
+  width:100% !important;
+}}
+div[data-testid="stNumberInput"] > div{{
+  display:flex !important;
+  align-items:center !important;
+  width:100% !important;
+  gap:4px !important;
+}}
+div[data-testid="stNumberInput"] input{{
+  flex:1 1 auto !important;
+  min-width:0 !important;        /* flex 잘림 방지 핵심 */
+  width:100% !important;
+  box-sizing:border-box !important;
+}}
+/* +/- 버튼은 shrink 금지 */
+div[data-testid="stNumberInput"] button{{
+  flex:0 0 36px !important;
+  width:36px !important;
+  min-width:36px !important;
+}}
+
 @media (max-width: 768px) {{
-  /* 여백 최소화 */
+  /* 여백 */
   .block-container{{
-    padding-left:8px !important;
-    padding-right:8px !important;
-    padding-top:8px !important;
+    padding-left:12px !important;
+    padding-right:12px !important;
+    padding-top:20px !important;
+    padding-bottom:48px !important;
   }}
 
-  /* 카드 패딩 축소 */
-  .stock-card{{padding:12px !important;border-radius:8px !important;}}
-  .ind-card{{padding:10px 12px !important;}}
-  .macro-card{{padding:10px 12px !important;}}
+  /* 카드 */
+  .stock-card{{padding:14px !important;border-radius:10px !important;margin-bottom:14px !important;}}
+  .ind-card{{padding:12px !important;margin-bottom:10px !important;}}
+  .macro-card{{padding:12px !important;}}
 
-  /* 버튼 터치 영역 확대 */
+  /* 버튼 터치 영역 */
   div[data-testid="stButton"] button{{
-    min-height:44px !important;
+    min-height:46px !important;
     font-size:13px !important;
-    padding:8px 12px !important;
+    padding:10px 12px !important;
   }}
 
-  /* 탭 — 모바일에서 작게 */
+  /* 탭 */
   .stTabs [data-baseweb="tab-list"]{{
     gap:1px !important;
     padding:2px !important;
   }}
   .stTabs [data-baseweb="tab"]{{
-    padding:0 6px !important;
+    padding:0 7px !important;
     font-size:10px !important;
-    height:30px !important;
+    height:32px !important;
   }}
 
-  /* 액션 플랜 테이블 모바일 */
-  .action-table td{{padding:8px !important;font-size:11px !important;}}
-  .action-table th{{padding:6px 8px !important;font-size:11px !important;}}
+  /* 테이블 */
+  .action-table td{{padding:10px 8px !important;font-size:11px !important;}}
+  .action-table th{{padding:8px !important;font-size:11px !important;}}
 
-  /* 큰 숫자(승률) 모바일 크기 */
-  .win-big{{font-size:36px !important;}}
+  /* 승률 큰 숫자 */
+  .win-big{{font-size:38px !important;}}
 
   /* 사이드바 */
   section[data-testid="stSidebar"]{{
     min-width:260px !important;
-    max-width:280px !important;
+    max-width:285px !important;
   }}
 
-  /* number_input 터치 크기 */
-  div[data-testid="stNumberInput"] input{{
-    font-size:16px !important;
-    min-height:40px !important;
-  }}
+  /* 입력창 — iOS 자동 줌 방지(16px), 터치 크기 확보 */
+  div[data-testid="stNumberInput"] input,
   div[data-testid="stTextInput"] input{{
     font-size:16px !important;
-    min-height:40px !important;
+    min-height:42px !important;
+    padding:8px 10px !important;
   }}
 
-  /* selectbox 터치 크기 */
+  /* selectbox */
   div[data-testid="stSelectbox"] > div{{
-    min-height:40px !important;
+    min-height:42px !important;
     font-size:14px !important;
   }}
 
-  /* expander 패딩 */
-  div[data-testid="stExpander"]{{padding:4px !important;}}
+  /* expander */
+  div[data-testid="stExpander"]{{padding:6px !important;}}
 
-  /* plotly 차트 터치 스크롤 허용 */
+  /* plotly 터치 스크롤 */
   .js-plotly-plot{{touch-action:pan-y !important;}}
 
   /* 섹션 헤더 */
-  .section-hdr{{font-size:10px !important;margin-bottom:8px !important;}}
+  .section-hdr{{
+    font-size:10px !important;
+    margin-bottom:10px !important;
+    margin-top:6px !important;
+  }}
 
   /* 배지 */
   .badge-green,.badge-yellow,.badge-red{{
-    padding:2px 7px !important;
+    padding:3px 8px !important;
     font-size:9px !important;
   }}
 
-  /* stat-box 모바일 */
-  .stat-box{{padding:8px 4px !important;}}
+  /* stat-box */
+  .stat-box{{padding:10px 6px !important;}}
+
+  /* 카드 간 여백 */
+  .stock-card{{margin-bottom:16px !important;}}
+  .ind-card{{margin-bottom:12px !important;}}
+
+  /* 섹션 사이 여백 */
+  .section-hdr{{margin-top:20px !important;}}
 }}
 
 /* 아이폰 노치/홈바 대응 */
 @supports (padding-bottom: env(safe-area-inset-bottom)) {{
   .block-container{{
-    padding-bottom: env(safe-area-inset-bottom) !important;
+    padding-bottom: calc(40px + env(safe-area-inset-bottom)) !important;
   }}
 }}
 </style>
@@ -441,6 +483,7 @@ def render_main_page():
         )
 
     # 거시 지표
+    st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
     st.markdown('<div class="section-hdr">📡 주요 거시 지표</div>', unsafe_allow_html=True)
     cards_html = ""
     for (label, sym, desc) in MACRO_INDICATORS:
@@ -581,7 +624,7 @@ def render_main_page():
         return
 
     st.markdown(
-        '<div class="section-hdr">📈 보유 종목 분석 '
+        '<div class="section-hdr" style="margin-top:20px;">📈 보유 종목 분석 '
         '<span class="lv1" style="margin-left:6px;">Lv.1 / Lv.2</span></div>',
         unsafe_allow_html=True
     )
@@ -979,7 +1022,7 @@ def render_detail_page():
     # 상단: 종목명 + 섹터 + 신호 배지
     st.markdown(
         f'<div style="background:#FFFFFF;border-bottom:1px solid #E8EAED;'
-        f'padding:12px 4px 12px;margin-bottom:0;">'
+        f'padding:16px 4px 14px;margin-bottom:0;">'
         f'<div style="display:flex;justify-content:space-between;align-items:center;">'
         f'<div>'
         f'<div style="display:flex;align-items:center;gap:8px;">'
@@ -995,8 +1038,8 @@ def render_detail_page():
 
     # 승률 + 현재가 큰 숫자 행
     st.markdown(
-        f'<div style="background:#FFFFFF;padding:14px 4px 10px;'
-        f'border-bottom:3px solid {sv_};margin-bottom:12px;">'
+        f'<div style="background:#FFFFFF;padding:16px 4px 14px;'
+        f'border-bottom:3px solid {sv_};margin-bottom:16px;">'
         f'<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
         f'<div>'
         f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:2px;">상승 가능성</div>'
