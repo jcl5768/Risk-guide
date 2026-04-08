@@ -7,7 +7,7 @@ from pages import apply_custom_style, render_main_page, render_detail_page
 
 st.set_page_config(
     page_title="Signum", page_icon="🔭",
-    layout="wide", initial_sidebar_state="expanded"
+    layout="centered", initial_sidebar_state="collapsed"
 )
 apply_custom_style()
 
