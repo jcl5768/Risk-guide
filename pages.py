@@ -151,13 +151,104 @@ div[data-testid="stExpander"] summary{{color:{txt_main};}}
 div[data-testid="stAlert"]{{background:{bg2} !important;border-color:{border} !important;color:{txt_main} !important;}}
 
 /* ── 모바일 최적화 ── */
+/* 기본: 전체 앱 최대 너비 제한 & 여백 조정 */
+.block-container{{
+  padding-left:12px !important;
+  padding-right:12px !important;
+  padding-top:16px !important;
+  max-width:100% !important;
+}}
+
+/* 사이드바 열렸을 때 모바일 너비 */
+section[data-testid="stSidebar"]{{
+  min-width:280px !important;
+  max-width:300px !important;
+}}
+
 @media (max-width: 768px) {{
-  .stock-card{{padding:12px 14px !important;}}
+  /* 여백 최소화 */
+  .block-container{{
+    padding-left:8px !important;
+    padding-right:8px !important;
+    padding-top:8px !important;
+  }}
+
+  /* 카드 패딩 축소 */
+  .stock-card{{padding:12px !important;border-radius:8px !important;}}
   .ind-card{{padding:10px 12px !important;}}
-  .action-table td{{padding:8px 8px !important;font-size:11px !important;}}
+  .macro-card{{padding:10px 12px !important;}}
+
+  /* 버튼 터치 영역 확대 */
+  div[data-testid="stButton"] button{{
+    min-height:44px !important;
+    font-size:13px !important;
+    padding:8px 12px !important;
+  }}
+
+  /* 탭 — 모바일에서 작게 */
+  .stTabs [data-baseweb="tab-list"]{{
+    gap:1px !important;
+    padding:2px !important;
+  }}
+  .stTabs [data-baseweb="tab"]{{
+    padding:0 6px !important;
+    font-size:10px !important;
+    height:30px !important;
+  }}
+
+  /* 액션 플랜 테이블 모바일 */
+  .action-table td{{padding:8px !important;font-size:11px !important;}}
   .action-table th{{padding:6px 8px !important;font-size:11px !important;}}
-  .stTabs [data-baseweb="tab"]{{padding:0 8px !important;font-size:11px !important;}}
-  section[data-testid="stSidebar"]{{min-width:260px !important;}}
+
+  /* 큰 숫자(승률) 모바일 크기 */
+  .win-big{{font-size:36px !important;}}
+
+  /* 사이드바 */
+  section[data-testid="stSidebar"]{{
+    min-width:260px !important;
+    max-width:280px !important;
+  }}
+
+  /* number_input 터치 크기 */
+  div[data-testid="stNumberInput"] input{{
+    font-size:16px !important;
+    min-height:40px !important;
+  }}
+  div[data-testid="stTextInput"] input{{
+    font-size:16px !important;
+    min-height:40px !important;
+  }}
+
+  /* selectbox 터치 크기 */
+  div[data-testid="stSelectbox"] > div{{
+    min-height:40px !important;
+    font-size:14px !important;
+  }}
+
+  /* expander 패딩 */
+  div[data-testid="stExpander"]{{padding:4px !important;}}
+
+  /* plotly 차트 터치 스크롤 허용 */
+  .js-plotly-plot{{touch-action:pan-y !important;}}
+
+  /* 섹션 헤더 */
+  .section-hdr{{font-size:10px !important;margin-bottom:8px !important;}}
+
+  /* 배지 */
+  .badge-green,.badge-yellow,.badge-red{{
+    padding:2px 7px !important;
+    font-size:9px !important;
+  }}
+
+  /* stat-box 모바일 */
+  .stat-box{{padding:8px 4px !important;}}
+}}
+
+/* 아이폰 노치/홈바 대응 */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {{
+  .block-container{{
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }}
 }}
 </style>
 """, unsafe_allow_html=True)
@@ -486,7 +577,7 @@ def render_main_page():
                 '🔍 종목 검색 — 사이드바에서도 추가할 수 있어요</div>',
                 unsafe_allow_html=True
             )
-            st.info('← 왼쪽 사이드바의 검색창에서 종목을 추가하세요. (사이드바 상단 >> 버튼으로 열 수 있어요)')
+            st.info('← 왼쪽 상단 > 버튼으로 사이드바를 열어 종목을 추가하세요. 📱 모바일에서는 화면 왼쪽 끝을 오른쪽으로 스와이프해도 열려요.')
         return
 
     st.markdown(
@@ -521,8 +612,8 @@ def render_main_page():
     _load_placeholder.empty()
     _prog_placeholder.empty()
 
-    for rs in range(0, len(portfolio), 4):
-        row  = list(enumerate(portfolio[rs: rs + 4], start=rs))
+    for rs in range(0, len(portfolio), 2):
+        row  = list(enumerate(portfolio[rs: rs + 2], start=rs))
         cols = st.columns(len(row))
         for col, (pi, stock) in zip(cols, row):
             with col:
@@ -600,40 +691,37 @@ def render_main_page():
     # 배분 차트
     st.markdown("<br>", unsafe_allow_html=True)
     st.markdown('<div class="section-hdr">📊 포트폴리오 구성</div>', unsafe_allow_html=True)
-    cc, bc = st.columns([1, 2])
-    with cc:
-        labels  = [s["ticker"] for s in portfolio]
-        weights = [s["weight"] for s in portfolio]
-        colors  = [SECTOR_CONFIG[detect_sector(s["ticker"])]["color"] for s in portfolio]
-        fig = go.Figure(go.Pie(
-            values=weights, labels=labels, hole=0.6,
-            marker=dict(colors=colors, line=dict(color="#FFFFFF", width=2)),
-            hovertemplate="<b>%{label}</b><br>%{value:.1f}%<extra></extra>",
-        ))
-        fig.update_layout(
-            paper_bgcolor="rgba(0,0,0,0)", showlegend=False,
-            margin=dict(t=10, b=10, l=10, r=10), height=200,
-            annotations=[dict(
-                text=f"<b>{sum(weights):.1f}%</b>", x=0.5, y=0.5,
-                font=dict(size=14, color="#1A1D23"), showarrow=False
-            )]
+    labels  = [s["ticker"] for s in portfolio]
+    weights = [s["weight"] for s in portfolio]
+    colors  = [SECTOR_CONFIG[detect_sector(s["ticker"])]["color"] for s in portfolio]
+    fig = go.Figure(go.Pie(
+        values=weights, labels=labels, hole=0.6,
+        marker=dict(colors=colors, line=dict(color="#FFFFFF", width=2)),
+        hovertemplate="<b>%{label}</b><br>%{value:.1f}%<extra></extra>",
+    ))
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)", showlegend=False,
+        margin=dict(t=10, b=10, l=10, r=10), height=180,
+        annotations=[dict(
+            text=f"<b>{sum(weights):.1f}%</b>", x=0.5, y=0.5,
+            font=dict(size=14, color="#1A1D23"), showarrow=False
+        )]
+    )
+    st.plotly_chart(fig, use_container_width=True)
+    for s in portfolio:
+        sc = SECTOR_CONFIG[detect_sector(s["ticker"])]
+        st.markdown(
+            f'<div style="margin-bottom:10px;">'
+            f'<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'
+            f'<span style="font-size:13px;font-weight:600;color:#1A1D23;">'
+            f'{s["ticker"]} <span style="font-size:11px;color:{sc["color"]};">'
+            f'{sc["icon"]} {sc["label"]}</span></span>'
+            f'<span style="font-size:13px;font-weight:600;color:#2563EB;">{s["weight"]:.1f}%</span></div>'
+            f'<div style="height:4px;background:#F3F4F6;border-radius:2px;">'
+            f'<div style="height:100%;width:{min(s["weight"],100)}%;'
+            f'background:{sc["color"]};border-radius:2px;opacity:0.8;"></div></div></div>',
+            unsafe_allow_html=True
         )
-        st.plotly_chart(fig, use_container_width=True)
-    with bc:
-        for s in portfolio:
-            sc = SECTOR_CONFIG[detect_sector(s["ticker"])]
-            st.markdown(
-                f'<div style="margin-bottom:10px;">'
-                f'<div style="display:flex;justify-content:space-between;margin-bottom:3px;">'
-                f'<span style="font-size:13px;font-weight:600;color:#1A1D23;">'
-                f'{s["ticker"]} <span style="font-size:11px;color:{sc["color"]};">'
-                f'{sc["icon"]} {sc["label"]}</span></span>'
-                f'<span style="font-size:13px;font-weight:600;color:#2563EB;">{s["weight"]:.1f}%</span></div>'
-                f'<div style="height:4px;background:#F3F4F6;border-radius:2px;">'
-                f'<div style="height:100%;width:{min(s["weight"],100)}%;'
-                f'background:{sc["color"]};border-radius:2px;opacity:0.8;"></div></div></div>',
-                unsafe_allow_html=True
-            )
     # ── 섹션 B: 포트폴리오 수익률 시뮬레이션 (6개월) ─────────────────────────
     if len(portfolio) >= 2:
         st.markdown("<br>", unsafe_allow_html=True)
@@ -913,7 +1001,7 @@ def render_detail_page():
         f'<div>'
         f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:2px;">상승 가능성</div>'
         f'<div style="font-family:\'JetBrains Mono\',monospace;font-size:44px;'
-        f'font-weight:700;color:{sv_};line-height:1;">{fw:.1f}%</div>'
+        f'font-weight:700;color:{sv_};line-height:1;" class="win-big">{fw:.1f}%</div>'
     f'<div style="font-size:11px;color:#9CA3AF;margin-top:2px;">'
     f'±{breakdown.get("confidence_range", 8.0):.0f}%p 불확실성 범위</div>'
         f'<div style="font-size:11px;color:#6B7280;margin-top:4px;">'
@@ -981,8 +1069,8 @@ def render_detail_page():
     # ── 탭 ───────────────────────────────────────────────────────────
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📈 차트",
-        f"{cfg['icon']} 섹터 & 리스크",
-        "🔗 상관 분석",
+        f"{cfg['icon']} 섹터/리스크",
+        "🔗 상관",
         "📰 뉴스",
         "🧪 백테스트",
     ])
@@ -997,7 +1085,7 @@ def render_detail_page():
             stats = get_price_stats(df)
 
         # 스탯 카드 6개 — 차트 바로 위
-        s_cols = st.columns(6)
+        s_cols = st.columns(3)
         stat_items = [
             ("기간 수익률",    f"{'+'if stats['period_ret']>=0 else ''}{stats['period_ret']:.1f}%",
              "#059669" if stats["period_ret"] >= 0 else "#DC2626"),
@@ -1007,7 +1095,8 @@ def render_detail_page():
             ("기간 최고가",    f"${stats['high']:.2f}",        "#1A1D23"),
             ("기간 최저가",    f"${stats['low']:.2f}",         "#1A1D23"),
         ]
-        for col, (lbl, val, clr) in zip(s_cols, stat_items):
+        for idx, (lbl, val, clr) in enumerate(stat_items):
+            col = s_cols[idx % 3]
             col.markdown(
                 f'<div class="stat-box">'
                 f'<div style="font-size:9px;color:#9CA3AF;font-weight:500;letter-spacing:0.5px;'
