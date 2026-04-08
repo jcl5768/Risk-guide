@@ -4,3 +4,4 @@ pandas
 yfinance
 numpy
 Finance-DataReader
+firebase-admin
