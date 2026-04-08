@@ -86,6 +86,13 @@ def apply_custom_style():
 header[data-testid="stHeader"]{{background:{header_bg};border-bottom:1px solid {border};}}
 .stDeployButton{{display:none;}} #MainMenu{{display:none;}} footer{{display:none;}}
 section[data-testid="stSidebar"]{{background:{sidebar_bg};border-right:1px solid {border};}}
+/* 사이드바 내부 콘텐츠 좌우 여백 — 입력칸 잘림 방지 */
+section[data-testid="stSidebar"] > div:first-child{{
+  padding-left:16px !important;
+  padding-right:16px !important;
+  padding-top:20px !important;
+  padding-bottom:20px !important;
+}}
 
 /* ── 카드 컴포넌트 ── */
 .macro-card{{background:{bg2};border:1px solid {border};border-radius:10px;padding:14px 18px;}}
@@ -152,21 +159,21 @@ div[data-testid="stAlert"]{{background:{bg2} !important;border-color:{border} !i
 
 /* ── 기본 여백 (데스크탑/모바일 공통) ── */
 .block-container{{
-  padding-left:16px !important;
-  padding-right:16px !important;
-  padding-top:24px !important;
-  padding-bottom:40px !important;
+  padding-left:20px !important;
+  padding-right:20px !important;
+  padding-top:32px !important;
+  padding-bottom:48px !important;
   max-width:100% !important;
 }}
 
 /* 요소 간 세로 여백 */
 div[data-testid="stVerticalBlock"] > div{{
-  margin-bottom:4px;
+  margin-bottom:6px;
 }}
 
 /* 카드 간 여백 */
-.stock-card{{margin-bottom:12px;}}
-.ind-card{{margin-bottom:10px;}}
+.stock-card{{margin-bottom:16px;}}
+.ind-card{{margin-bottom:12px;}}
 
 /* 사이드바 너비 */
 section[data-testid="stSidebar"]{{
@@ -200,10 +207,16 @@ div[data-testid="stNumberInput"] button{{
 @media (max-width: 768px) {{
   /* 여백 */
   .block-container{{
-    padding-left:12px !important;
-    padding-right:12px !important;
-    padding-top:20px !important;
-    padding-bottom:48px !important;
+    padding-left:16px !important;
+    padding-right:16px !important;
+    padding-top:28px !important;
+    padding-bottom:56px !important;
+  }}
+
+  /* 사이드바 내부 모바일 패딩 */
+  section[data-testid="stSidebar"] > div:first-child{{
+    padding-left:14px !important;
+    padding-right:14px !important;
   }}
 
   /* 카드 */
