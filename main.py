@@ -275,13 +275,10 @@ with st.sidebar:
                         "shares":    round(ns, 3),
                         "avg_price": na,
                     })
-                    if st.session_state.user:
+                    # 클라우드 자동저장
+                    if st.session_state.get("user"):
                         uid = st.session_state.user["uid"]
-                        ok = save_portfolio(uid, st.session_state.portfolio)
-                        if ok:
-                            st.success("✅ 클라우드 저장 완료!")
-                        else:
-                            st.warning("⚠ 저장 실패 — Firebase 연결 확인 필요")
+                        save_portfolio(uid, st.session_state.portfolio)
                     # 검색창·선택값 완전 초기화
                     for k in ("_sel_ticker", "_sel_name", "search_q", "sg_select",
                               "add_w", "add_s", "add_a"):
