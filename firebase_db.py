@@ -4,6 +4,8 @@ import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
 from datetime import datetime
+import base64
+import json
 
 
 # ── Firebase 초기화 (한 번만) ─────────────────────────────────────────────────
@@ -11,13 +13,12 @@ def _init_firebase():
     if firebase_admin._apps:
         return True
     try:
-        key_dict = dict(st.secrets["firebase"])
-        key_dict["private_key"] = key_dict["private_key"].replace("\\n", "\n")
+        b64 = st.secrets["firebase"]["json_base64"]
+        key_dict = json.loads(base64.b64decode(b64).decode("utf-8"))
         cred = credentials.Certificate(key_dict)
         firebase_admin.initialize_app(cred)
         return True
     except KeyError:
-        # Secrets에 [firebase] 키가 없을 때 — 조용히 실패
         return False
     except Exception:
         return False
@@ -25,7 +26,6 @@ def _init_firebase():
 
 def get_db():
     if not _init_firebase():
-        # 진단용: 어떤 키가 있는지 확인
         try:
             keys = list(st.secrets.keys())
             if "firebase" not in keys:
