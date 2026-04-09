@@ -37,9 +37,12 @@ if st.session_state.user is None:
 # ── 로그인 후 포트폴리오 최초 1회 불러오기 ───────────────────────────────────
 if not st.session_state.portfolio_loaded:
     uid = st.session_state.user["uid"]
-    loaded = load_portfolio(uid)
-    if loaded:
-        st.session_state.portfolio = loaded
+    try:
+        loaded = load_portfolio(uid)
+        if loaded:
+            st.session_state.portfolio = loaded
+    except Exception:
+        pass  # Firebase 미연결 시 조용히 넘어감
     st.session_state.portfolio_loaded = True
 
 
