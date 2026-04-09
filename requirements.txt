@@ -4,4 +4,4 @@ pandas
 yfinance
 numpy
 Finance-DataReader
-firebase-admin
+firebase-admin==6.5.0
