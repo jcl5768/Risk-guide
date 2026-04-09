@@ -26,12 +26,6 @@ def _init_firebase():
 
 def get_db():
     if not _init_firebase():
-        try:
-            keys = list(st.secrets.keys())
-            if "firebase" not in keys:
-                st.warning(f"⚠ Secrets 키 목록: {keys} — 'firebase' 없음")
-        except Exception:
-            pass
         return None
     try:
         return firestore.client()
