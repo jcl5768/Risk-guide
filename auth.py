@@ -5,12 +5,17 @@ import requests
 import json
 
 
-# ── Firebase REST API 키 (Secrets에서 가져옴) ────────────────────────────────
+# ── Firebase REST API 키 ──────────────────────────────────────────────────────
 def _get_api_key() -> str:
+    # Secrets에서 읽기 실패 시 직접 반환
     try:
-        return st.secrets["firebase_web"]["api_key"]
+        key = st.secrets["firebase_web"]["api_key"]
+        if key:
+            return key
     except Exception:
-        return ""
+        pass
+    # fallback: 직접 입력 (Secrets 문제 진단용)
+    return "AIzaSyCroFdB0C8yWjQRKnhepFSPcmVIUtecqAo"
 
 
 # ── 이메일/비밀번호 로그인 ────────────────────────────────────────────────────
