@@ -37,15 +37,17 @@ def get_db():
 def save_portfolio(uid: str, portfolio: list) -> bool:
     db = get_db()
     if db is None:
+        st.sidebar.error("Firebase 연결 실패 — 저장 안 됨")
         return False
     try:
         db.collection("users").document(uid).set(
             {"portfolio": portfolio, "updated_at": datetime.utcnow()},
             merge=True
         )
+        st.sidebar.success("☁ 저장됨")
         return True
     except Exception as e:
-        st.error(f"포트폴리오 저장 실패: {e}")
+        st.sidebar.error(f"저장 오류: {e}")
         return False
 
 
