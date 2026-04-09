@@ -12,18 +12,26 @@ def _init_firebase():
         return True
     try:
         key_dict = dict(st.secrets["firebase"])
-        # private_key 줄바꿈 처리
         key_dict["private_key"] = key_dict["private_key"].replace("\\n", "\n")
         cred = credentials.Certificate(key_dict)
         firebase_admin.initialize_app(cred)
         return True
-    except Exception as e:
-        st.error(f"Firebase 초기화 실패: {e}")
+    except KeyError:
+        # Secrets에 [firebase] 키가 없을 때 — 조용히 실패
+        return False
+    except Exception:
         return False
 
 
 def get_db():
     if not _init_firebase():
+        # 진단용: 어떤 키가 있는지 확인
+        try:
+            keys = list(st.secrets.keys())
+            if "firebase" not in keys:
+                st.warning(f"⚠ Secrets 키 목록: {keys} — 'firebase' 없음")
+        except Exception:
+            pass
         return None
     try:
         return firestore.client()
