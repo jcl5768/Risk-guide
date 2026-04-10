@@ -13,19 +13,14 @@ def _init_firebase():
     if firebase_admin._apps:
         return True
     try:
-        st.write("🔍 secrets 키 목록:", list(st.secrets.keys()))
         b64 = st.secrets["firebase"]["json_base64"]
-        st.write("✅ firebase 키 발견!")
         key_dict = json.loads(base64.b64decode(b64).decode("utf-8"))
         cred = credentials.Certificate(key_dict)
         firebase_admin.initialize_app(cred)
-        st.write("✅ Firebase 초기화 성공!")
         return True
-    except KeyError as e:
-        st.error(f"❌ KeyError: {e}")
+    except KeyError:
         return False
-    except Exception as e:
-        st.error(f"❌ 기타 오류: {type(e).__name__}: {e}")
+    except Exception:
         return False
 
 
@@ -42,7 +37,6 @@ def get_db():
 def save_portfolio(uid: str, portfolio: list) -> bool:
     db = get_db()
     if db is None:
-        st.sidebar.error("Firebase 연결 실패 — 저장 안 됨")
         return False
     try:
         db.collection("users").document(uid).set(
@@ -66,8 +60,7 @@ def load_portfolio(uid: str) -> list:
         if doc.exists:
             return doc.to_dict().get("portfolio", [])
         return []
-    except Exception as e:
-        st.error(f"포트폴리오 불러오기 실패: {e}")
+    except Exception:
         return []
 
 
@@ -84,8 +77,7 @@ def save_signal_history(uid: str, ticker: str, win_rate: float, price: float):
                          "recorded_at": datetime.utcnow()}},
                merge=True)
         return True
-    except Exception as e:
-        st.error(f"신호 히스토리 저장 실패: {e}")
+    except Exception:
         return False
 
 
@@ -103,6 +95,5 @@ def load_signal_history(uid: str) -> dict:
         for doc in docs:
             history[doc.id] = doc.to_dict()
         return history
-    except Exception as e:
-        st.error(f"히스토리 불러오기 실패: {e}")
+    except Exception:
         return {}
