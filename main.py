@@ -4,17 +4,12 @@ import json
 from config import SECTOR_CONFIG, ETF_MAP
 from engine import detect_sector, get_z_and_price, search_tickers, TICKER_NAME_MAP
 from pages import apply_custom_style, render_main_page, render_detail_page
-from auth import render_auth_page
-from firebase_db import save_portfolio, load_portfolio
 
 st.set_page_config(
     page_title="Signum", page_icon="🔭",
     layout="centered", initial_sidebar_state="collapsed"
 )
 apply_custom_style()
-
-# ── 디버그: secrets 키 확인 (확인 후 삭제 예정) ──────────────────────────────
-st.write("🔍 secrets 키 목록:", list(st.secrets.keys()))
 
 
 # ── 세션 초기화 ───────────────────────────────────────────────────────────────
@@ -27,45 +22,13 @@ def init_session():
     if "chart_period"     not in st.session_state: st.session_state.chart_period   = "1개월"
     if "open_sidebar"     not in st.session_state: st.session_state.open_sidebar   = False
     if "dark_mode"        not in st.session_state: st.session_state.dark_mode      = False
-    if "user"             not in st.session_state: st.session_state.user           = None
-    if "portfolio_loaded" not in st.session_state: st.session_state.portfolio_loaded = False
 
 init_session()
-
-# ── 로그인 체크 ───────────────────────────────────────────────────────────────
-if st.session_state.user is None:
-    render_auth_page()
-    st.stop()
-
-# ── 로그인 후 포트폴리오 최초 1회 불러오기 ───────────────────────────────────
-if not st.session_state.portfolio_loaded:
-    uid = st.session_state.user["uid"]
-    try:
-        loaded = load_portfolio(uid)
-        if loaded:
-            st.session_state.portfolio = loaded
-    except Exception:
-        pass  # Firebase 미연결 시 조용히 넘어감
-    st.session_state.portfolio_loaded = True
 
 
 # ── 사이드바 ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### 📂 내 포트폴리오")
-
-    # 로그인 사용자 정보 + 로그아웃
-    user_email = st.session_state.user.get("email", "")
-    st.markdown(
-        f'<div style="font-size:11px;color:#6B7280;margin-bottom:6px;">' 
-        f'👤 {user_email}</div>',
-        unsafe_allow_html=True
-    )
-    if st.button("로그아웃", key="btn_logout", use_container_width=True):
-        st.session_state.user             = None
-        st.session_state.portfolio        = []
-        st.session_state.portfolio_loaded = False
-        st.rerun()
-    st.markdown("---")
 
     # open_sidebar 플래그 → 검색창 자동 열기
     if st.session_state.get("open_sidebar"):
@@ -120,8 +83,6 @@ with st.sidebar:
                         {"weight": round(nw, 1), "shares": round(ns, 3), "avg_price": na}
                     )
                     st.session_state.editing = None
-                    if st.session_state.user:
-                        save_portfolio(st.session_state.user["uid"], st.session_state.portfolio)
                     st.rerun()
             with c2:
                 if st.button("✕ 취소", key=f"cancel_{i}", use_container_width=True):
@@ -164,8 +125,6 @@ with st.sidebar:
                     st.session_state.portfolio.pop(i)
                     if st.session_state.editing == i:
                         st.session_state.editing = None
-                    if st.session_state.user:
-                        save_portfolio(st.session_state.user["uid"], st.session_state.portfolio)
                     st.rerun()
 
         st.markdown("<hr style='margin:6px 0;border-color:#F3F4F6;'>", unsafe_allow_html=True)
@@ -278,10 +237,6 @@ with st.sidebar:
                         "shares":    round(ns, 3),
                         "avg_price": na,
                     })
-                    # 클라우드 자동저장
-                    if st.session_state.get("user"):
-                        uid = st.session_state.user["uid"]
-                        save_portfolio(uid, st.session_state.portfolio)
                     # 검색창·선택값 완전 초기화
                     for k in ("_sel_ticker", "_sel_name", "search_q", "sg_select",
                               "add_w", "add_s", "add_a"):
