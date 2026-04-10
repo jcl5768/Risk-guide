@@ -1,4 +1,4 @@
-# firebase_db.py — Firestore 저장/불러오기 (디버그 버전)
+# firebase_db.py — Firestore 저장/불러오기
 
 import streamlit as st
 import firebase_admin
@@ -8,48 +8,75 @@ import base64
 import json
 
 
-def _get_db():
+# ── Firebase 초기화 (한 번만) ─────────────────────────────────────────────────
+def _init_firebase():
+    if firebase_admin._apps:
+        return True
     try:
-        app = firebase_admin.get_app()
-    except ValueError:
-        # try-except 없이 날것의 에러 그대로 노출
+        st.write("🔍 secrets 키 목록:", list(st.secrets.keys()))
         b64 = st.secrets["firebase"]["json_base64"]
+        st.write("✅ firebase 키 발견!")
         key_dict = json.loads(base64.b64decode(b64).decode("utf-8"))
         cred = credentials.Certificate(key_dict)
-        app = firebase_admin.initialize_app(cred)
+        firebase_admin.initialize_app(cred)
+        st.write("✅ Firebase 초기화 성공!")
+        return True
+    except KeyError as e:
+        st.error(f"❌ KeyError: {e}")
+        return False
+    except Exception as e:
+        st.error(f"❌ 기타 오류: {type(e).__name__}: {e}")
+        return False
 
-    return firestore.client()
 
-
-def save_portfolio(uid: str, portfolio: list) -> bool:
+def get_db():
+    if not _init_firebase():
+        return None
     try:
-        db = _get_db()
+        return firestore.client()
+    except Exception:
+        return None
+
+
+# ── 포트폴리오 저장 ───────────────────────────────────────────────────────────
+def save_portfolio(uid: str, portfolio: list) -> bool:
+    db = get_db()
+    if db is None:
+        st.sidebar.error("Firebase 연결 실패 — 저장 안 됨")
+        return False
+    try:
         db.collection("users").document(uid).set(
             {"portfolio": portfolio, "updated_at": datetime.utcnow()},
             merge=True
         )
-        st.sidebar.success("☁ 저장됨!")
+        st.sidebar.success("☁ 저장됨")
         return True
     except Exception as e:
-        st.sidebar.error(f"저장 실패: {e}")
+        st.sidebar.error(f"저장 오류: {e}")
         return False
 
 
+# ── 포트폴리오 불러오기 ───────────────────────────────────────────────────────
 def load_portfolio(uid: str) -> list:
+    db = get_db()
+    if db is None:
+        return []
     try:
-        db = _get_db()
         doc = db.collection("users").document(uid).get()
         if doc.exists:
             return doc.to_dict().get("portfolio", [])
         return []
     except Exception as e:
-        st.sidebar.error(f"불러오기 실패: {e}")
+        st.error(f"포트폴리오 불러오기 실패: {e}")
         return []
 
 
+# ── 신호 히스토리 저장 ────────────────────────────────────────────────────────
 def save_signal_history(uid: str, ticker: str, win_rate: float, price: float):
+    db = get_db()
+    if db is None:
+        return False
     try:
-        db = _get_db()
         today = datetime.utcnow().strftime("%Y-%m-%d")
         db.collection("users").document(uid)\
           .collection("signal_history").document(today)\
@@ -58,13 +85,16 @@ def save_signal_history(uid: str, ticker: str, win_rate: float, price: float):
                merge=True)
         return True
     except Exception as e:
-        st.sidebar.error(f"히스토리 저장 실패: {e}")
+        st.error(f"신호 히스토리 저장 실패: {e}")
         return False
 
 
+# ── 신호 히스토리 불러오기 (최근 30일) ───────────────────────────────────────
 def load_signal_history(uid: str) -> dict:
+    db = get_db()
+    if db is None:
+        return {}
     try:
-        db = _get_db()
         docs = db.collection("users").document(uid)\
                  .collection("signal_history")\
                  .order_by("__name__", direction=firestore.Query.DESCENDING)\
@@ -74,5 +104,5 @@ def load_signal_history(uid: str) -> dict:
             history[doc.id] = doc.to_dict()
         return history
     except Exception as e:
-        st.sidebar.error(f"히스토리 불러오기 실패: {e}")
+        st.error(f"히스토리 불러오기 실패: {e}")
         return {}
