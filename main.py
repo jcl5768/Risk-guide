@@ -13,6 +13,9 @@ st.set_page_config(
 )
 apply_custom_style()
 
+# ── 디버그: secrets 키 확인 (확인 후 삭제 예정) ──────────────────────────────
+st.write("🔍 secrets 키 목록:", list(st.secrets.keys()))
+
 
 # ── 세션 초기화 ───────────────────────────────────────────────────────────────
 def init_session():
