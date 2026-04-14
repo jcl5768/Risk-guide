@@ -468,11 +468,13 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
     if news_items:
         _raw_sum = sum(
             _news_decay(
-                6.0 if n["sentiment"]=="Positive" else -6.0 if n["sentiment"]=="Negative" else 0.0,
+                3.0 if n["sentiment"]=="Positive" else -3.0 if n["sentiment"]=="Negative" else 0.0,
                 n.get("pub_date_raw",""),
                 n.get("title","")
             ) for n in news_items
         )
+        # 뉴스 총합 캡: ±6점 (기존 ±10에서 축소 — 일간 변동성 완화)
+        _raw_sum = max(-6.0, min(6.0, _raw_sum))
         # 모두 Neutral(0)이면 news_bonus(get_korean_news가 계산한 nb) 사용
         if _raw_sum == 0.0 and news_bonus != 0.0:
             news_adj = round(news_bonus * 0.8, 1)
@@ -512,7 +514,18 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
 
     total = (50.0 + adj_position + momentum_offset
              + adj_macro + news_adj + regime_use + adj_momentum)
-    final = round(max(5.0, min(95.0, total)), 1)
+    raw_final = round(max(5.0, min(95.0, total)), 1)
+
+    # ── 3일 이동평균 스무딩 (일간 변동성 완화) ────────────────────────
+    # session_state에 종목별 최근 3회 계산값을 누적해 평균 표시
+    # 하루 30→70 급등락 방지 목적
+    _key = f"_win_history_{stock_ticker}" if stock_ticker else "_win_history_unknown"
+    _hist = st.session_state.get(_key, [])
+    _hist.append(raw_final)
+    if len(_hist) > 3:
+        _hist = _hist[-3:]
+    st.session_state[_key] = _hist
+    final = round(sum(_hist) / len(_hist), 1)
 
     # 신뢰구간: 구성 요소 수(5개)와 각 점수의 표준편차로 근사
     # 각 구성요소 불확실성의 합으로 ±범위 추정
@@ -540,6 +553,7 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
         "momentum_offset": momentum_offset,
         "confidence_range": confidence_range,
         "total_raw":       round(total, 1),
+        "raw_final":       raw_final,   # 스무딩 전 원본값 (참고용)
         "final":           final,
         "dynamic_weights": dyn_w,
         "z_penalty":       position_score,
