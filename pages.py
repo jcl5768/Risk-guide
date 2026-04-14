@@ -1425,30 +1425,63 @@ def render_detail_page():
             mom_high   = mom_meta.get("high_label", "")
             mom_20d    = mom_meta.get("mom_20", 0.0)
             mom_60d    = mom_meta.get("mom_60", 0.0)
+            mom_vol_mult = mom_meta.get("vol_multiplier", 1.0)
+            mom_pct_from_high = mom_meta.get("pct_from_high", 0.0)
             mom_detail = f"20일 {mom_20d:+.1f}% / 60일 {mom_60d:+.1f}%"
             if mom_vol:    mom_detail += f" · 거래량 {mom_vol}"
             if mom_high:   mom_detail += f" · {mom_high}"
 
+            # 거래량 상세 문구 (Lv.2 모멘텀 행 서브텍스트용)
+            _vol_ratio_txt = ""
+            if mom_vol_mult >= 1.5:
+                _vol_clr = "#059669"
+                _vol_ratio_txt = f"최근 5일 거래량: 평균 대비 약 {mom_vol_mult:.1f}배 (폭발 🔥)"
+            elif mom_vol_mult >= 1.2:
+                _vol_clr = "#059669"
+                _vol_ratio_txt = f"최근 5일 거래량: 평균 대비 약 {mom_vol_mult:.1f}배 (증가 ↑)"
+            elif mom_vol_mult <= 0.4:
+                _vol_clr = "#DC2626"
+                _vol_ratio_txt = f"최근 5일 거래량: 평균 대비 약 {mom_vol_mult:.1f}배 (급감 ↓ — 모멘텀 신뢰도 약화)"
+            elif mom_vol_mult <= 0.7:
+                _vol_clr = "#D97706"
+                _vol_ratio_txt = f"최근 5일 거래량: 평균 대비 약 {mom_vol_mult:.1f}배 (감소)"
+            else:
+                _vol_clr = "#9CA3AF"
+                _vol_ratio_txt = f"최근 5일 거래량: 평균 수준 (×{mom_vol_mult:.1f})"
+
+            # 신고가 서브텍스트
+            _high_txt = ""
+            if mom_high:
+                _high_txt = f" · 신고가 대비 {mom_pct_from_high:+.1f}% ({mom_high})"
+
             lv2_rows = ""
-            for lbl, val, c in [
-                ("📍 가격 위치 (1년 %ile)", f"{breakdown.get('percentile',50):.0f}%ile → {pos_score:+.1f}점", zcolor(zs)),
-                ("📡 거시 환경 (동적 가중Z)", f"{weighted_z:+.3f}σ → {macro_contrib}%p", zcolor(weighted_z)),
-                ("📰 뉴스 감성 (감쇠 적용)", f"{news_adj:+.1f}점", "#059669" if news_adj >= 0 else "#DC2626"),
-                ("🚀 모멘텀 (추세+거래량+신고가)", f"{mom_score:+.1f}점", mom_clr),
-                ("📊 섹터 상대 강도", f"{_rel["rel_20"]:+.1f}% (20일)", _rel_clr),
+            for lbl, val, c, sub in [
+                ("📍 가격 위치 (1년 %ile)", f"{breakdown.get('percentile',50):.0f}%ile → {pos_score:+.1f}점", zcolor(zs), ""),
+                ("📡 거시 환경 (동적 가중Z)", f"{weighted_z:+.3f}σ → {macro_contrib}%p", zcolor(weighted_z), ""),
+                ("📰 뉴스 감성 (감쇠 적용)", f"{news_adj:+.1f}점", "#059669" if news_adj >= 0 else "#DC2626", ""),
+                ("🚀 모멘텀 (추세+거래량+신고가)", f"{mom_score:+.1f}점", mom_clr, f'<div style="font-size:10px;color:{_vol_clr};margin-top:3px;">{_vol_ratio_txt}{_high_txt}</div>'),
+                ("📊 섹터 상대 강도", f"{_rel['rel_20']:+.1f}% (20일)", _rel_clr, ""),
             ]:
                 lv2_rows += (
-                    f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                    f'padding:8px 12px;background:#F9FAFB;border-radius:7px;margin-bottom:6px;">'
+                    f'<div style="padding:8px 12px;background:#F9FAFB;border-radius:7px;margin-bottom:6px;">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:center;">'
                     f'<span style="font-size:12px;color:#374151;">{lbl}</span>'
                     f'<span style="font-size:13px;font-weight:700;color:{c};">{val}</span></div>'
+                    f'{sub}'
+                    f'</div>'
                 )
 
             adj_pos_lv2   = breakdown.get("adj_position",    0)
             adj_mom_lv2   = breakdown.get("adj_momentum",    0)
             regime_lv2    = breakdown.get("regime_adj",      0)
             mom_off_lv2   = breakdown.get("momentum_offset", 0)
+            raw_final_lv2 = breakdown.get("raw_final",       fw)
             _off_lv2      = f" {mom_off_lv2:+.1f}(오프셋)" if mom_off_lv2 != 0 else ""
+            # 스무딩 여부 표시 (raw와 표시값이 다를 때만)
+            _smooth_note  = (
+                f' <span style="font-size:10px;color:#9CA3AF;">'
+                f'(오늘 원본 {raw_final_lv2:.0f}% · 3일 평균으로 표시)</span>'
+            ) if abs(raw_final_lv2 - fw) >= 1.0 else ""
 
             st.markdown(
                 f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
@@ -1465,7 +1498,7 @@ def render_detail_page():
                 f'④ <b>모멘텀</b>: 추세 지속성 + 거래량 + 52주 신고가 근접도 (×1.3 적용)<br>'
                 f'⑤ <b>시장 국면</b>: 전체 시장이 Quiet/Trending/Volatile 중 어느 상태인지</div>'
                 f'<div style="font-size:12px;color:#6B7280;margin-bottom:12px;">'
-                f'승률 <b style="color:{sv_};">{fw:.0f}%</b> = '
+                f'승률 <b style="color:{sv_};">{fw:.0f}%</b>{_smooth_note} = '
                 f'50(기본) {adj_pos_lv2:+.1f}(가격) {breakdown.get("macro_score", weighted_z*15):+.1f}(거시)'
                 f' {news_adj:+.1f}(뉴스) {adj_mom_lv2:+.1f}(모멘텀){_off_lv2} {regime_lv2:+.1f}(국면)</div>'
                 f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:8px;">'
