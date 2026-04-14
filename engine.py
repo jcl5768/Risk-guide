@@ -515,17 +515,7 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
     total = (50.0 + adj_position + momentum_offset
              + adj_macro + news_adj + regime_use + adj_momentum)
     raw_final = round(max(5.0, min(95.0, total)), 1)
-
-    # ── 3일 이동평균 스무딩 (일간 변동성 완화) ────────────────────────
-    # session_state에 종목별 최근 3회 계산값을 누적해 평균 표시
-    # 하루 30→70 급등락 방지 목적
-    _key = f"_win_history_{stock_ticker}" if stock_ticker else "_win_history_unknown"
-    _hist = st.session_state.get(_key, [])
-    _hist.append(raw_final)
-    if len(_hist) > 3:
-        _hist = _hist[-3:]
-    st.session_state[_key] = _hist
-    final = round(sum(_hist) / len(_hist), 1)
+    final = raw_final
 
     # 신뢰구간: 구성 요소 수(5개)와 각 점수의 표준편차로 근사
     # 각 구성요소 불확실성의 합으로 ±범위 추정
