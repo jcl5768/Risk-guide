@@ -998,7 +998,20 @@ def render_detail_page():
     zs, price        = get_z_and_price(target)
     sk, cfg, inds    = get_sector_analysis(target)
     nb, news_items   = get_korean_news(target, si.get("name", ""))
-    fw, breakdown    = calc_win_rate(zs, inds, nb, stock_ticker=target, news_items=news_items)
+    fw_raw, breakdown = calc_win_rate(zs, inds, nb, stock_ticker=target, news_items=news_items)
+
+    # ── 3일 이동평균 스무딩 (session_state — 캐시 함수 밖에서 안전하게 처리) ──
+    _skey  = f"_win_hist_{target}"
+    _shist = st.session_state.get(_skey, [])
+    _shist.append(fw_raw)
+    if len(_shist) > 3:
+        _shist = _shist[-3:]
+    st.session_state[_skey] = _shist
+    fw = round(sum(_shist) / len(_shist), 1)
+    # breakdown에도 반영 (Lv.2 표시용)
+    breakdown["raw_final"] = fw_raw
+    breakdown["final"]     = fw
+
     weighted_z       = get_weighted_z(inds, breakdown.get("dynamic_weights"))
 
     _detail_load.empty()
