@@ -250,19 +250,70 @@ PERSISTENT_NEG_KW = [
 
 # 단기 이벤트성 키워드 (시간 감쇠 강하게)
 SHORT_TERM_KW = [
-    "급등","급락","상승","하락","실적 발표","어닝","분기","전망","목표가",
-    "오늘","금일","이번주","반등","조정","surges","plunges","earnings","quarterly",
+    "급등","급락","상승","하락","어닝","분기","목표가",
+    "오늘","금일","이번주","반등","조정","surges","plunges","quarterly",
+]
+
+# ── 실적/가이던스 키워드 ──────────────────────────────────────────────────────
+# 긍정 실적 (단기 — 48h 이내 풀반영, 이후 급감쇠)
+EARNINGS_POS_KW = [
+    "어닝 서프라이즈","예상 상회","예상치 상회","어닝쇼크","실적 호조","호실적",
+    "사상 최고 실적","최대 실적","분기 최대","분기 최고","흑자 전환","깜짝 실적",
+    "beats expectations","beat estimates","beat consensus","earnings beat",
+    "record earnings","record revenue","record profit","blowout quarter",
+    "above expectations","topped estimates","exceeded forecasts",
+]
+# 부정 실적 (단기)
+EARNINGS_NEG_KW = [
+    "실적 부진","예상 하회","예상치 하회","어닝 미스","적자 전환","실적 쇼크",
+    "분기 적자","순손실","매출 감소","이익 감소",
+    "misses expectations","missed estimates","earnings miss","missed consensus",
+    "below expectations","fell short","disappointed","revenue declined","profit fell",
+    "quarterly loss","net loss",
+]
+# 긍정 가이던스 (구조적 — 장기 지속 반영)
+GUIDANCE_POS_KW = [
+    "가이던스 상향","전망 상향","가이던스 올려","연간 전망 상향","매출 전망 상향",
+    "이익 전망 상향","실적 가이던스 상향","긍정적 전망","낙관적 전망",
+    "raises guidance","raised guidance","raised outlook","raised forecast",
+    "guidance raised","outlook raised","boosted guidance","lifted guidance",
+    "increased guidance","raised full-year","raised annual","above consensus guidance",
+    "strong outlook","positive outlook","bullish guidance",
+]
+# 부정 가이던스 (구조적 — 장기 지속 반영)
+GUIDANCE_NEG_KW = [
+    "가이던스 하향","전망 하향","가이던스 낮춰","연간 전망 하향","매출 전망 하향",
+    "이익 전망 하향","실적 가이던스 하향","부정적 전망","비관적 전망",
+    "lowers guidance","lowered guidance","lowered outlook","lowered forecast",
+    "guidance lowered","outlook lowered","cut guidance","guidance cut",
+    "reduced guidance","below consensus guidance","weak outlook","cautious outlook",
+    "disappointing guidance","guidance disappoints",
 ]
 
 
 def _classify_news(title):
     """
-    뉴스를 세 가지로 분류:
-    - 'persistent_pos': 긍정 지속성 (감쇠 없이 장기 반영)
-    - 'persistent_neg': 부정 지속성
-    - 'short':          단기 이벤트 (기존 시간 감쇠)
+    뉴스를 다섯 가지로 분류:
+    - 'guidance_pos':   가이던스 상향 (구조적 — 장기 지속 반영)
+    - 'guidance_neg':   가이던스 하향 (구조적 — 장기 지속 반영)
+    - 'earnings_pos':   실적 서프라이즈 (단기 — 48h 풀반영 후 급감쇠)
+    - 'earnings_neg':   실적 미스 (단기)
+    - 'persistent_pos': 기타 긍정 지속성
+    - 'persistent_neg': 기타 부정 지속성
+    - 'short':          단기 이벤트
     """
     t = title.lower()
+    # 가이던스 먼저 체크 (실적보다 우선 — 더 구조적)
+    if any(kw.lower() in t for kw in GUIDANCE_POS_KW):
+        return "guidance_pos"
+    if any(kw.lower() in t for kw in GUIDANCE_NEG_KW):
+        return "guidance_neg"
+    # 실적 서프라이즈/미스
+    if any(kw.lower() in t for kw in EARNINGS_POS_KW):
+        return "earnings_pos"
+    if any(kw.lower() in t for kw in EARNINGS_NEG_KW):
+        return "earnings_neg"
+    # 기존 지속성 분류
     if any(kw.lower() in t for kw in PERSISTENT_POS_KW):
         return "persistent_pos"
     if any(kw.lower() in t for kw in PERSISTENT_NEG_KW):
@@ -270,19 +321,37 @@ def _classify_news(title):
     return "short"
 
 
-# ── 뉴스 시간 감쇠 (지속성 뉴스 구분 적용) ───────────────────────────────────
+# ── 뉴스 시간 감쇠 (실적/가이던스 분류 적용) ────────────────────────────────
 def _news_decay(raw_score, pub_date_str, title=""):
     """
-    지속성 뉴스: 시간 경과해도 60% 고정 반영 (이중반영 방지용 40% 할인만)
-    단기 뉴스:
-      0~24h  → 100%
-      24~48h → 50%
-      48h+   → 10%
+    가이던스 (구조적): 시간 무관 70% 고정 반영 — 애널리스트 추정치가 리셋되므로 장기 유지
+    실적 서프라이즈:   0~48h → 100%, 48h~1주 → 40%, 1주+ → 15%  (가이던스보다 빠르게 소멸)
+    기타 지속성:       시간 무관 60% 고정 반영
+    단기 이벤트:       0~24h → 100%, 24~48h → 60%, 1주 이내 → 30%, 1주+ → 15%
     """
     news_type = _classify_news(title)
 
+    # 가이던스 — 가장 오래 지속 (70% 고정)
+    if news_type in ("guidance_pos", "guidance_neg"):
+        return raw_score * 0.7
+
+    # 실적 서프라이즈 — 단기 피크 후 중속 감쇠
+    if news_type in ("earnings_pos", "earnings_neg"):
+        if not pub_date_str:
+            return raw_score * 0.5
+        try:
+            from email.utils import parsedate_to_datetime
+            pub_dt  = parsedate_to_datetime(pub_date_str)
+            now_utc = datetime.now(pub_dt.tzinfo) if pub_dt.tzinfo else datetime.utcnow()
+            hours   = (now_utc - pub_dt).total_seconds() / 3600
+            if hours <= 48:   return raw_score * 1.0   # 48h 풀반영
+            elif hours <= 168: return raw_score * 0.4  # 1주일 이내
+            else:              return raw_score * 0.15 # 1주일 이상 (완전 소멸 방지)
+        except:
+            return raw_score * 0.5
+
+    # 기타 지속성 뉴스 — 시간 무관 60% 고정
     if news_type in ("persistent_pos", "persistent_neg"):
-        # 지속성 뉴스는 시간 무관 60% 고정
         return raw_score * 0.6
 
     # 단기 뉴스 — 시간 감쇠
@@ -293,10 +362,10 @@ def _news_decay(raw_score, pub_date_str, title=""):
         pub_dt  = parsedate_to_datetime(pub_date_str)
         now_utc = datetime.now(pub_dt.tzinfo) if pub_dt.tzinfo else datetime.utcnow()
         hours   = (now_utc - pub_dt).total_seconds() / 3600
-        if hours <= 24:   return raw_score * 1.0
-        elif hours <= 48: return raw_score * 0.6
+        if hours <= 24:    return raw_score * 1.0
+        elif hours <= 48:  return raw_score * 0.6
         elif hours <= 168: return raw_score * 0.3   # 1주일 이내
-        else:              return raw_score * 0.15  # 1주일 이상 (완전 소멸 방지)
+        else:              return raw_score * 0.15  # 1주일 이상
     except:
         return raw_score * 0.5
 
@@ -464,18 +533,47 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
         macro_z = get_weighted_z(indicators)
     macro_score = round(max(-20.0, min(20.0, macro_z * 15)), 1)
 
-    # 3. 뉴스 (시간 감쇠)
+    # 3. 뉴스 (시간 감쇠) + 실적/가이던스 감지
+    earnings_guidance_signals = []   # breakdown용 감지 기록
     if news_items:
-        _raw_sum = sum(
-            _news_decay(
-                3.0 if n["sentiment"]=="Positive" else -3.0 if n["sentiment"]=="Negative" else 0.0,
-                n.get("pub_date_raw",""),
-                n.get("title","")
-            ) for n in news_items
-        )
-        # 뉴스 총합 캡: ±6점 (기존 ±10에서 축소 — 일간 변동성 완화)
+        _raw_sum = 0.0
+        for n in news_items:
+            raw_s = 3.0 if n["sentiment"]=="Positive" else -3.0 if n["sentiment"]=="Negative" else 0.0
+            decayed = _news_decay(raw_s, n.get("pub_date_raw",""), n.get("title",""))
+            _raw_sum += decayed
+
+            # 실적/가이던스 감지 기록
+            ntype = n.get("news_type") or _classify_news(n.get("title",""))
+            if ntype in ("earnings_pos","earnings_neg","guidance_pos","guidance_neg"):
+                # 방향 레이블
+                if ntype == "guidance_pos":
+                    badge = "📊 가이던스 상향"
+                    direction = "긍정"
+                    note = "구조적 — 장기 반영"
+                elif ntype == "guidance_neg":
+                    badge = "📊 가이던스 하향"
+                    direction = "부정"
+                    note = "구조적 — 장기 반영"
+                elif ntype == "earnings_pos":
+                    badge = "📈 실적 서프라이즈"
+                    direction = "긍정"
+                    note = "단기 — 48h 이내 풀반영"
+                else:  # earnings_neg
+                    badge = "📉 실적 미스"
+                    direction = "부정"
+                    note = "단기 — 48h 이내 풀반영"
+
+                earnings_guidance_signals.append({
+                    "badge":     badge,
+                    "direction": direction,
+                    "note":      note,
+                    "contrib":   round(decayed, 1),   # 이 뉴스가 기여한 점수
+                    "title":     n.get("title","")[:60],
+                    "pub_date":  n.get("pub_date",""),
+                })
+
+        # 뉴스 총합 캡: ±6점
         _raw_sum = max(-6.0, min(6.0, _raw_sum))
-        # 모두 Neutral(0)이면 news_bonus(get_korean_news가 계산한 nb) 사용
         if _raw_sum == 0.0 and news_bonus != 0.0:
             news_adj = round(news_bonus * 0.8, 1)
         else:
@@ -543,12 +641,13 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
         "momentum_offset": momentum_offset,
         "confidence_range": confidence_range,
         "total_raw":       round(total, 1),
-        "raw_final":       raw_final,   # 스무딩 전 원본값 (참고용)
+        "raw_final":       raw_final,
         "final":           final,
         "dynamic_weights": dyn_w,
         "z_penalty":       position_score,
         "adj_position":    adj_position,
         "adj_momentum":    adj_momentum,
+        "earnings_guidance_signals": earnings_guidance_signals,   # 실적/가이던스 감지 목록
         "explain": (
             f"기본(50) {'+' if adj_position>=0 else ''}{adj_position}"
             f"(가격{percentile:.0f}%ile) "
