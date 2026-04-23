@@ -538,14 +538,23 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
     if news_items:
         _raw_sum = 0.0
         for n in news_items:
-            raw_s = 3.0 if n["sentiment"]=="Positive" else -3.0 if n["sentiment"]=="Negative" else 0.0
+            ntype = n.get("news_type") or _classify_news(n.get("title",""))
+
+            # 실적/가이던스는 분류 타입으로 방향 확정 (sentiment 무시 — 오분류 방지)
+            # 예: "EPS 상회에도 주가 하락" → earnings_pos로 분류됐으면 긍정으로 처리
+            if ntype in ("earnings_pos", "guidance_pos"):
+                raw_s = 3.0
+            elif ntype in ("earnings_neg", "guidance_neg"):
+                raw_s = -3.0
+            else:
+                # 일반 뉴스는 기존 sentiment 기반
+                raw_s = 3.0 if n["sentiment"]=="Positive" else -3.0 if n["sentiment"]=="Negative" else 0.0
+
             decayed = _news_decay(raw_s, n.get("pub_date_raw",""), n.get("title",""))
             _raw_sum += decayed
 
             # 실적/가이던스 감지 기록
-            ntype = n.get("news_type") or _classify_news(n.get("title",""))
             if ntype in ("earnings_pos","earnings_neg","guidance_pos","guidance_neg"):
-                # 방향 레이블
                 if ntype == "guidance_pos":
                     badge = "📊 가이던스 상향"
                     direction = "긍정"
@@ -558,18 +567,39 @@ def calc_win_rate(z_stock, indicators, news_bonus, stock_ticker=None, news_items
                     badge = "📈 실적 서프라이즈"
                     direction = "긍정"
                     note = "단기 — 48h 이내 풀반영"
-                else:  # earnings_neg
+                else:
                     badge = "📉 실적 미스"
                     direction = "부정"
                     note = "단기 — 48h 이내 풀반영"
 
+                # 경과 시간 계산
+                elapsed_str = ""
+                pub_raw = n.get("pub_date_raw", "")
+                if pub_raw:
+                    try:
+                        from email.utils import parsedate_to_datetime
+                        pub_dt  = parsedate_to_datetime(pub_raw)
+                        now_utc = datetime.now(pub_dt.tzinfo) if pub_dt.tzinfo else datetime.utcnow()
+                        hours   = (now_utc - pub_dt).total_seconds() / 3600
+                        if hours < 1:
+                            elapsed_str = "방금 전"
+                        elif hours < 24:
+                            elapsed_str = f"{int(hours)}시간 전"
+                        elif hours < 48:
+                            elapsed_str = f"{int(hours//24)}일 {int(hours%24)}시간 전 (감쇠 시작)"
+                        else:
+                            elapsed_str = f"{int(hours//24)}일 전 (감쇠 적용 중)"
+                    except:
+                        elapsed_str = ""
+
                 earnings_guidance_signals.append({
-                    "badge":     badge,
-                    "direction": direction,
-                    "note":      note,
-                    "contrib":   round(decayed, 1),   # 이 뉴스가 기여한 점수
-                    "title":     n.get("title","")[:60],
-                    "pub_date":  n.get("pub_date",""),
+                    "badge":       badge,
+                    "direction":   direction,
+                    "note":        note,
+                    "contrib":     round(decayed, 1),
+                    "title":       n.get("title","")[:60],
+                    "pub_date":    n.get("pub_date",""),
+                    "elapsed":     elapsed_str,
                 })
 
         # 뉴스 총합 캡: ±6점
