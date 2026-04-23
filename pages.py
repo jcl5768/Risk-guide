@@ -712,6 +712,24 @@ def render_main_page():
                 else:                   macro_txt = "➡ 시장 환경 중립"
                 macro_clr = "#059669" if weighted_z > 0.3 else "#DC2626" if weighted_z < -0.3 else "#6B7280"
 
+                # 실적/가이던스 배지 (메인 카드용 — 감지된 경우만 표시)
+                eg_card_html = ""
+                eg_signals_card = breakdown.get("earnings_guidance_signals", [])
+                if eg_signals_card:
+                    badges = []
+                    for sig in eg_signals_card[:2]:   # 최대 2개만 카드에 표시
+                        is_pos = sig["direction"] == "긍정"
+                        b_bg  = "#ECFDF5" if is_pos else "#FEF2F2"
+                        b_txt = "#065F46" if is_pos else "#991B1B"
+                        badges.append(
+                            f'<span style="background:{b_bg};color:{b_txt};'
+                            f'font-size:9px;font-weight:600;padding:2px 6px;'
+                            f'border-radius:4px;margin-right:3px;">{sig["badge"]}</span>'
+                        )
+                    eg_card_html = (
+                        f'<div style="margin-top:4px;margin-bottom:2px;">{"".join(badges)}</div>'
+                    )
+
                 st.markdown(f"""
 <div class="stock-card" style="border-top:3px solid {sv_};">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
@@ -726,6 +744,7 @@ def render_main_page():
         <span style="font-size:10px;color:#9CA3AF;">상승 가능성</span>
     </div>
     <div style="font-size:10px;color:{macro_clr};margin-bottom:4px;">{macro_txt}</div>
+    {eg_card_html}
     <div style="font-size:10px;color:{tclr};margin-bottom:6px;">
         {'▲' if tc>0 else '▼'} {ti['name']} 주요 변수
     </div>
@@ -1484,6 +1503,43 @@ def render_detail_page():
                     f'</div>'
                 )
 
+            # ── 실적/가이던스 감지 배지 ────────────────────────────────
+            eg_signals = breakdown.get("earnings_guidance_signals", [])
+            eg_html = ""
+            if eg_signals:
+                eg_items = ""
+                for sig in eg_signals:
+                    is_pos = sig["direction"] == "긍정"
+                    badge_bg  = "#ECFDF5" if is_pos else "#FEF2F2"
+                    badge_bdr = "#A7F3D0" if is_pos else "#FECACA"
+                    badge_txt = "#065F46" if is_pos else "#991B1B"
+                    contrib_str = f"{sig['contrib']:+.1f}점" if sig['contrib'] != 0 else "반영 중"
+                    eg_items += (
+                        f'<div style="background:{badge_bg};border:1px solid {badge_bdr};'
+                        f'border-radius:7px;padding:8px 12px;margin-bottom:6px;">'
+                        f'<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
+                        f'<div>'
+                        f'<span style="font-size:12px;font-weight:700;color:{badge_txt};">{sig["badge"]}</span>'
+                        f'<div style="font-size:10px;color:{badge_txt};opacity:0.8;margin-top:2px;">'
+                        f'{sig["note"]}</div>'
+                        f'<div style="font-size:10px;color:#6B7280;margin-top:3px;word-break:break-all;">'
+                        f'{sig["title"]}{"..." if len(sig["title"]) >= 60 else ""}</div>'
+                        f'</div>'
+                        f'<span style="font-size:12px;font-weight:700;color:{badge_txt};white-space:nowrap;margin-left:8px;">'
+                        f'약 {contrib_str}</span>'
+                        f'</div>'
+                        f'</div>'
+                    )
+                eg_html = (
+                    f'<div style="margin-top:10px;">'
+                    f'<div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:6px;">'
+                    f'📋 실적 · 가이던스 감지</div>'
+                    f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:6px;">'
+                    f'점수는 키워드 기반 추정값으로, 방향 참고용입니다.</div>'
+                    f'{eg_items}'
+                    f'</div>'
+                )
+
             adj_pos_lv2   = breakdown.get("adj_position",    0)
             adj_mom_lv2   = breakdown.get("adj_momentum",    0)
             regime_lv2    = breakdown.get("regime_adj",      0)
@@ -1517,6 +1573,7 @@ def render_detail_page():
                 f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:8px;">'
                 f'모멘텀 상세: {mom_detail}</div>'
                 f'{lv2_rows}'
+                f'{eg_html}'
                 f'</div>',
                 unsafe_allow_html=True
             )
