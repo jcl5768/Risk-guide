@@ -1521,7 +1521,9 @@ def render_detail_page():
                         f'<div>'
                         f'<span style="font-size:12px;font-weight:700;color:{badge_txt};">{sig["badge"]}</span>'
                         f'<div style="font-size:10px;color:{badge_txt};opacity:0.8;margin-top:2px;">'
-                        f'{sig["note"]}</div>'
+                        f'{sig["note"]}'
+                        f'{"  ·  " + sig["elapsed"] if sig.get("elapsed") else ""}'
+                        f'</div>'
                         f'<div style="font-size:10px;color:#6B7280;margin-top:3px;word-break:break-all;">'
                         f'{sig["title"]}{"..." if len(sig["title"]) >= 60 else ""}</div>'
                         f'</div>'
@@ -1665,31 +1667,7 @@ def render_detail_page():
                     unsafe_allow_html=True
                 )
 
-            # 베이지안 업데이트 시나리오
-            bayes_rows = ""
-            for label, direction, clr in [
-                ("📈 호재 이벤트 발생 시", +1, "#059669"),
-                ("📉 악재 이벤트 발생 시", -1, "#DC2626"),
-            ]:
-                updated = calc_bayesian_update(fw, inds, direction)
-                bayes_rows += (
-                    f'<div style="display:flex;justify-content:space-between;align-items:center;'
-                    f'padding:7px 10px;background:#F9FAFB;border-radius:7px;margin-bottom:5px;">'
-                    f'<span style="font-size:11px;color:#374151;">{label}</span>'
-                    f'<span style="font-size:13px;font-weight:700;color:{clr};">{updated:.0f}%</span></div>'
-                )
-            st.markdown(
-                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
-                f'padding:14px 16px;">'
-                f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:8px;">🔄 베이지안 시나리오</div>'
-                f'<div style="font-size:11px;color:#6B7280;margin-bottom:8px;">'
-                f'현재 승률 <b>{fw:.0f}%</b> 기준, 새 이벤트 발생 시</div>'
-                f'{bayes_rows}'
-                f'<div style="font-size:10px;color:#B0B7C3;margin-top:8px;">'
-                f'베이지안 업데이트 기반 사후 승률 추정 · 참고용</div>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
+
 
     # ── TAB 2: 섹터 지표 & 리스크 드라이버 ──────────────────────────
     with tab2:
