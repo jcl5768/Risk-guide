@@ -744,7 +744,6 @@ def render_main_page():
         <span style="font-size:10px;color:#9CA3AF;">상승 가능성</span>
     </div>
     <div style="font-size:10px;color:{macro_clr};margin-bottom:4px;">{macro_txt}</div>
-    {eg_card_html}
     <div style="font-size:10px;color:{tclr};margin-bottom:6px;">
         {'▲' if tc>0 else '▼'} {ti['name']} 주요 변수
     </div>
@@ -755,6 +754,9 @@ def render_main_page():
         <span style="color:{pnl_amt_clr};font-weight:600;">{pnl_amt_str}</span>
     </div>
 </div>""", unsafe_allow_html=True)
+                # 실적/가이던스 배지 — f-string 밖에서 별도 렌더링 (HTML 이스케이프 방지)
+                if eg_card_html:
+                    st.markdown(eg_card_html, unsafe_allow_html=True)
                 if weight_warn:
                     st.markdown(weight_warn, unsafe_allow_html=True)
                 st.markdown("<div style='height:4px;'></div>", unsafe_allow_html=True)
