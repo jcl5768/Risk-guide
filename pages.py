@@ -1488,19 +1488,95 @@ def render_detail_page():
             if mom_high:
                 _high_txt = f" · 신고가 대비 {mom_pct_from_high:+.1f}% ({mom_high})"
 
+            # ── 각 항목별 한 줄 해석 문장 ───────────────────────────────
+            pct = breakdown.get('percentile', 50)
+            if pct >= 85:
+                price_interp = "1년 중 거의 최고가 근처입니다. 추가 상승 여력이 제한적일 수 있어요."
+            elif pct >= 65:
+                price_interp = "상단 구간에 위치해 있습니다. 고점 대비 조정 가능성을 염두에 두세요."
+            elif pct >= 35:
+                price_interp = "1년 범위 중간 구간입니다. 방향성 판단이 중요한 시점이에요."
+            elif pct >= 15:
+                price_interp = "하단 구간에 위치해 있습니다. 저점 매수 관점에서 유리한 위치예요."
+            else:
+                price_interp = "1년 중 거의 최저가 근처입니다. 반등 여력이 있으나 하락 추세 확인이 필요해요."
+
+            if weighted_z > 0.5:
+                macro_interp = "금리·달러·VIX 등 거시 환경이 이 종목에 전반적으로 유리하게 작용하고 있어요."
+            elif weighted_z > 0.1:
+                macro_interp = "거시 환경이 소폭 우호적입니다. 큰 역풍은 없는 상태예요."
+            elif weighted_z > -0.1:
+                macro_interp = "거시 환경이 중립적입니다. 뚜렷한 유불리가 없어요."
+            elif weighted_z > -0.5:
+                macro_interp = "거시 환경이 소폭 불리합니다. 시장 지표를 주시할 필요가 있어요."
+            else:
+                macro_interp = "금리·달러·VIX 등 거시 환경이 부정적으로 작용하고 있어요. 주의가 필요합니다."
+
+            if news_adj >= 3:
+                news_interp = "최근 뉴스가 전반적으로 긍정적입니다. 호재성 기사가 다수 감지됐어요."
+            elif news_adj >= 1:
+                news_interp = "뉴스 감성이 소폭 긍정적입니다."
+            elif news_adj >= -1:
+                news_interp = "뉴스 감성이 중립적입니다. 특별한 호재나 악재가 없는 상태예요."
+            elif news_adj >= -3:
+                news_interp = "뉴스 감성이 소폭 부정적입니다. 부정적 기사가 감지됐어요."
+            else:
+                news_interp = "최근 뉴스가 전반적으로 부정적입니다. 악재성 기사가 다수 감지됐어요."
+
+            if mom_score >= 8:
+                mom_interp = "추세·거래량·신고가 근접도 모두 강합니다. 강한 상승 모멘텀이에요."
+            elif mom_score >= 3:
+                mom_interp = "모멘텀이 양호합니다. 추세가 살아있는 상태예요."
+            elif mom_score >= -3:
+                mom_interp = "모멘텀이 중립적입니다. 방향성이 뚜렷하지 않아요."
+            elif mom_score >= -8:
+                mom_interp = "모멘텀이 약화되고 있습니다. 추세 둔화를 확인하세요."
+            else:
+                mom_interp = "모멘텀이 전반적으로 부정적입니다. 하락 추세가 지속되고 있어요."
+
+            rel_20 = _rel['rel_20']
+            if rel_20 >= 5:
+                rel_interp = f"같은 섹터 ETF 대비 {rel_20:+.1f}% 초과 상승 중입니다. 섹터 내 강자예요."
+            elif rel_20 >= 1:
+                rel_interp = f"섹터 대비 소폭 아웃퍼폼 중입니다 ({rel_20:+.1f}%)."
+            elif rel_20 >= -1:
+                rel_interp = f"섹터와 비슷한 흐름입니다 ({rel_20:+.1f}%)."
+            elif rel_20 >= -5:
+                rel_interp = f"섹터 대비 소폭 언더퍼폼 중입니다 ({rel_20:+.1f}%)."
+            else:
+                rel_interp = f"같은 섹터 ETF 대비 {rel_20:+.1f}% 뒤처지고 있습니다. 섹터 내 약자예요."
+
+            # ── 행 렌더링 ────────────────────────────────────────────────
             lv2_rows = ""
-            for lbl, val, c, sub in [
-                ("📍 가격 위치 (1년 %ile)", f"{breakdown.get('percentile',50):.0f}%ile → {pos_score:+.1f}점", zcolor(zs), ""),
-                ("📡 거시 환경 (동적 가중Z)", f"{weighted_z:+.3f}σ → {macro_contrib}%p", zcolor(weighted_z), ""),
-                ("📰 뉴스 감성 (감쇠 적용)", f"{news_adj:+.1f}점", "#059669" if news_adj >= 0 else "#DC2626", ""),
-                ("🚀 모멘텀 (추세+거래량+신고가)", f"{mom_score:+.1f}점", mom_clr, f'<div style="font-size:10px;color:{_vol_clr};margin-top:3px;">{_vol_ratio_txt}{_high_txt}</div>'),
-                ("📊 섹터 상대 강도", f"{_rel['rel_20']:+.1f}% (20일)", _rel_clr, ""),
+            for lbl, val, c, interp, sub in [
+                ("📍 가격 위치 (1년 %ile)",
+                 f"{pct:.0f}%ile → {pos_score:+.1f}점",
+                 zcolor(zs), price_interp, ""),
+
+                ("📡 거시 환경 (동적 가중Z)",
+                 f"{weighted_z:+.3f}σ → {macro_contrib}%p",
+                 zcolor(weighted_z), macro_interp, ""),
+
+                ("📰 뉴스 감성 (감쇠 적용)",
+                 f"{news_adj:+.1f}점",
+                 "#059669" if news_adj >= 0 else "#DC2626", news_interp, ""),
+
+                ("🚀 모멘텀 (추세+거래량+신고가)",
+                 f"{mom_score:+.1f}점",
+                 mom_clr, mom_interp,
+                 f'<div style="font-size:11px;color:{_vol_clr};margin-top:6px;">{_vol_ratio_txt}{_high_txt}</div>'),
+
+                ("📊 섹터 상대 강도",
+                 f"{rel_20:+.1f}% (20일)",
+                 _rel_clr, rel_interp, ""),
             ]:
                 lv2_rows += (
-                    f'<div style="padding:8px 12px;background:#F9FAFB;border-radius:7px;margin-bottom:6px;">'
-                    f'<div style="display:flex;justify-content:space-between;align-items:center;">'
-                    f'<span style="font-size:12px;color:#374151;">{lbl}</span>'
-                    f'<span style="font-size:13px;font-weight:700;color:{c};">{val}</span></div>'
+                    f'<div style="padding:14px 16px;background:#F9FAFB;border-radius:10px;margin-bottom:10px;">'
+                    f'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">'
+                    f'<span style="font-size:13px;color:#374151;font-weight:500;">{lbl}</span>'
+                    f'<span style="font-size:14px;font-weight:700;color:{c};white-space:nowrap;">{val}</span>'
+                    f'</div>'
+                    f'<div style="font-size:12px;color:#6B7280;margin-top:7px;line-height:1.6;">{interp}</div>'
                     f'{sub}'
                     f'</div>'
                 )
@@ -1518,27 +1594,27 @@ def render_detail_page():
                     contrib_str = f"{sig['contrib']:+.1f}점" if sig['contrib'] != 0 else "반영 중"
                     eg_items += (
                         f'<div style="background:{badge_bg};border:1px solid {badge_bdr};'
-                        f'border-radius:7px;padding:8px 12px;margin-bottom:6px;">'
+                        f'border-radius:10px;padding:14px 16px;margin-bottom:10px;">'
                         f'<div style="display:flex;justify-content:space-between;align-items:flex-start;">'
                         f'<div>'
-                        f'<span style="font-size:12px;font-weight:700;color:{badge_txt};">{sig["badge"]}</span>'
-                        f'<div style="font-size:10px;color:{badge_txt};opacity:0.8;margin-top:2px;">'
+                        f'<span style="font-size:13px;font-weight:700;color:{badge_txt};">{sig["badge"]}</span>'
+                        f'<div style="font-size:11px;color:{badge_txt};opacity:0.8;margin-top:4px;">'
                         f'{sig["note"]}'
                         f'{"  ·  " + sig["elapsed"] if sig.get("elapsed") else ""}'
                         f'</div>'
-                        f'<div style="font-size:10px;color:#6B7280;margin-top:3px;word-break:break-all;">'
+                        f'<div style="font-size:11px;color:#6B7280;margin-top:5px;line-height:1.5;word-break:break-all;">'
                         f'{sig["title"]}{"..." if len(sig["title"]) >= 60 else ""}</div>'
                         f'</div>'
-                        f'<span style="font-size:12px;font-weight:700;color:{badge_txt};white-space:nowrap;margin-left:8px;">'
+                        f'<span style="font-size:13px;font-weight:700;color:{badge_txt};white-space:nowrap;margin-left:12px;">'
                         f'약 {contrib_str}</span>'
                         f'</div>'
                         f'</div>'
                     )
                 eg_html = (
-                    f'<div style="margin-top:10px;">'
-                    f'<div style="font-size:11px;font-weight:600;color:#374151;margin-bottom:6px;">'
+                    f'<div style="margin-top:14px;">'
+                    f'<div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;">'
                     f'📋 실적 · 가이던스 감지</div>'
-                    f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:6px;">'
+                    f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:10px;">'
                     f'점수는 키워드 기반 추정값으로, 방향 참고용입니다.</div>'
                     f'{eg_items}'
                     f'</div>'
