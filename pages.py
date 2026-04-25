@@ -1906,62 +1906,12 @@ def render_detail_page():
                     unsafe_allow_html=True
                 )
 
-            # ── Seeking Alpha 가이드 ────────────────────────────────
+            # Seeking Alpha 링크만 조용히
             st.markdown(
-                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
-                f'padding:16px;margin-bottom:10px;">'
-                f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:12px;">'
-                f'📄 Seeking Alpha — 실적 발표 전문 (Earnings Call)</div>'
-
-                f'<div style="font-size:12px;color:#6B7280;line-height:1.7;margin-bottom:12px;">'
-                f'실적 발표 때 CEO·CFO가 직접 한 말이 담긴 전문이에요. 기사보다 훨씬 원본에 가까워요.<br>'
-                f'아래 항목들을 중점적으로 보세요.'
-                f'</div>'
-
-                # 체크 항목들
-                f'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">'
-
-                f'<div style="background:#F0FDF4;border-left:3px solid #059669;'
-                f'border-radius:0 8px 8px 0;padding:10px 12px;">'
-                f'<div style="font-size:12px;font-weight:600;color:#065F46;margin-bottom:3px;">'
-                f'① 가이던스 (Guidance)</div>'
-                f'<div style="font-size:11px;color:#374151;line-height:1.6;">'
-                f'"raised guidance" "above consensus" → 다음 분기 전망을 올렸다는 신호<br>'
-                f'"lowered guidance" "below expectations" → 전망을 낮췄다는 경고 신호'
-                f'</div>'
-                f'</div>'
-
-                f'<div style="background:#F0FDF4;border-left:3px solid #059669;'
-                f'border-radius:0 8px 8px 0;padding:10px 12px;">'
-                f'<div style="font-size:12px;font-weight:600;color:#065F46;margin-bottom:3px;">'
-                f'② CAPEX (설비투자)</div>'
-                f'<div style="font-size:11px;color:#374151;line-height:1.6;">'
-                f'Microsoft·Google·Amazon 같은 {target}의 고객사 실적 전문에서 확인.<br>'
-                f'"CAPEX to increase / expand" → {target} 같은 공급사에 호재<br>'
-                f'"moderating CAPEX / reducing" → 수요 둔화 신호'
-                f'</div>'
-                f'</div>'
-
-                f'<div style="background:#FEF2F2;border-left:3px solid #DC2626;'
-                f'border-radius:0 8px 8px 0;padding:10px 12px;">'
-                f'<div style="font-size:12px;font-weight:600;color:#991B1B;margin-bottom:3px;">'
-                f'③ 톤 변화 (주의 신호)</div>'
-                f'<div style="font-size:11px;color:#374151;line-height:1.6;">'
-                f'"challenging environment" "headwinds" "cautious" 같은 표현이 많아지면<br>'
-                f'숫자가 괜찮아도 경영진이 불안하다는 신호예요.'
-                f'</div>'
-                f'</div>'
-
-                f'</div>'
-
-                f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:12px;">'
-                f'⚠ 일부 콘텐츠는 유료예요. 무료로 볼 수 있는 기사부터 먼저 확인해보세요.'
-                f'</div>'
-
-                f'<a href="{sa_url}" target="_blank" style="display:block;text-align:center;'
-                f'background:#7C3AED;color:#fff;font-size:12px;font-weight:600;'
-                f'padding:10px;border-radius:8px;text-decoration:none;">'
-                f'Seeking Alpha — {target} 실적 페이지 →</a>'
+                f'<div style="text-align:right;margin-top:-4px;margin-bottom:6px;">'
+                f'<a href="{sa_url}" target="_blank" '
+                f'style="font-size:10px;color:#9CA3AF;text-decoration:none;">'
+                f'📄 Seeking Alpha 실적 전문 →</a>'
                 f'</div>',
                 unsafe_allow_html=True
             )
