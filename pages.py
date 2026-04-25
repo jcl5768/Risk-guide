@@ -1388,7 +1388,7 @@ def render_detail_page():
 
         # ── Lv.1 / Lv.2 / Lv.3 패널 ─────────────────────────────────
         st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
-        lv_tab1, lv_tab2, lv_tab3, lv_tab4 = st.tabs(["☀️ Lv.1 직관", "📊 Lv.2 분석", "🔬 Lv.3 심화", "📋 Lv.4 직접확인"])
+        lv_tab1, lv_tab2, lv_tab3 = st.tabs(["☀️ Lv.1 직관", "📊 Lv.2 분석", "🔬 Lv.3 심화"])
 
         # ── Lv.1: 직관 ───────────────────────────────────────────────
         with lv_tab1:
@@ -1831,109 +1831,56 @@ def render_detail_page():
                     unsafe_allow_html=True
                 )
 
-
-
-        # ── Lv.4: 직접 확인 ──────────────────────────────────────────
-        with lv_tab4:
+            # ── 애널리스트 데이터 + 외부 리소스 ──────────────────────
             ya_url = f"https://finance.yahoo.com/quote/{target}/analysis"
             sa_url = f"https://seekingalpha.com/symbol/{target}/earnings"
-            rd_alt = f"https://www.reddit.com/search/?q={target}+alternative&sort=new"
-            rd_iss = f"https://www.reddit.com/search/?q={target}+problem&sort=new"
 
-            st.markdown(
-                f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;">'
-                f'<span style="background:#7C3AED;color:#fff;font-size:10px;font-weight:700;'
-                f'padding:2px 7px;border-radius:4px;">Lv.4</span>'
-                f'<span style="font-size:12px;font-weight:600;color:#1A1D23;">직접 확인 체크리스트</span>'
-                f'</div>'
-                f'<div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:10px;'
-                f'padding:14px 16px;margin-bottom:18px;font-size:12px;color:#5B21B6;line-height:1.7;">'
-                f'📌 <b>이 탭은 Signum 점수와 별개입니다.</b><br>'
-                f'Signum은 가격·거시·모멘텀을 봐요. 이 탭은 <b>"사람들이 이 기업을 어떻게 보고 있나"</b>를 확인하는 곳이에요.<br>'
-                f'두 가지가 같은 방향을 가리킬 때 가장 확신을 가질 수 있어요.'
-                f'</div>',
-                unsafe_allow_html=True
-            )
-
-            # ── 1. yfinance 애널리스트 실데이터 ────────────────────────
             try:
                 import yfinance as yf
                 tk   = yf.Ticker(target)
                 info = tk.info or {}
 
-                # 목표주가
-                current_price    = info.get("currentPrice") or info.get("regularMarketPrice", 0)
-                target_mean      = info.get("targetMeanPrice", 0)
-                target_high      = info.get("targetHighPrice", 0)
-                target_low       = info.get("targetLowPrice", 0)
-                analyst_count    = info.get("numberOfAnalystOpinions", 0)
-                upside           = ((target_mean - current_price) / current_price * 100) if current_price and target_mean else 0
-
-                # 추천 비율
-                rec = info.get("recommendationKey", "")
-                rec_map = {
-                    "strong_buy": "적극 매수", "buy": "매수",
-                    "hold": "보유", "underperform": "비중 축소",
-                    "sell": "매도"
-                }
-                rec_kor = rec_map.get(rec, "—")
-                rec_clr = (
-                    "#059669" if rec in ("strong_buy","buy") else
-                    "#D97706" if rec == "hold" else
-                    "#DC2626"
-                )
-
-                upside_clr = "#059669" if upside >= 5 else "#DC2626" if upside < 0 else "#D97706"
+                current_price = info.get("currentPrice") or info.get("regularMarketPrice", 0)
+                target_mean   = info.get("targetMeanPrice", 0)
+                target_high   = info.get("targetHighPrice", 0)
+                target_low    = info.get("targetLowPrice", 0)
+                analyst_count = info.get("numberOfAnalystOpinions", 0)
+                upside        = ((target_mean - current_price) / current_price * 100) if current_price and target_mean else 0
+                rec           = info.get("recommendationKey", "")
+                rec_map       = {"strong_buy":"적극 매수","buy":"매수","hold":"보유","underperform":"비중 축소","sell":"매도"}
+                rec_kor       = rec_map.get(rec, "—")
+                rec_clr       = "#059669" if rec in ("strong_buy","buy") else "#D97706" if rec == "hold" else "#DC2626"
+                upside_clr    = "#059669" if upside >= 5 else "#DC2626" if upside < 0 else "#D97706"
 
                 st.markdown(
-                    f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
-                    f'padding:20px;margin-bottom:14px;">'
+                    f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
+                    f'padding:16px;margin-bottom:10px;">'
+                    f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:12px;">'
+                    f'👔 애널리스트 의견 — {analyst_count}명 · Yahoo Finance 실시간</div>'
 
-                    f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">'
-                    f'<span style="font-size:22px;">📊</span>'
-                    f'<div>'
-                    f'<div style="font-size:14px;font-weight:700;color:#1A1D23;">전문가들은 지금 어떻게 보나요?</div>'
-                    f'<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">'
-                    f'애널리스트 {analyst_count}명 의견 · Yahoo Finance 실시간</div>'
-                    f'</div>'
-                    f'</div>'
-
-                    f'<div style="font-size:12px;color:#6B7280;line-height:1.7;margin-bottom:14px;">'
-                    f'주식 전문가(애널리스트)들이 기업을 직접 분석한 뒤 내린 결론이에요. '
-                    f'사용자가 따로 분석할 필요 없이, <b>"전문가 다수가 어느 방향을 보고 있는가"</b>만 확인하면 돼요.'
-                    f'</div>'
-
-                    # 핵심 수치 3개
-                    f'<div style="display:flex;gap:8px;margin-bottom:14px;">'
-
-                    f'<div style="flex:1;background:#F9FAFB;border-radius:10px;padding:12px;text-align:center;">'
-                    f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:6px;">종합 의견</div>'
+                    f'<div style="display:flex;gap:8px;margin-bottom:12px;">'
+                    f'<div style="flex:1;background:#F9FAFB;border-radius:8px;padding:12px;text-align:center;">'
+                    f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:5px;">종합 의견</div>'
                     f'<div style="font-size:18px;font-weight:700;color:{rec_clr};">{rec_kor}</div>'
                     f'</div>'
-
-                    f'<div style="flex:1;background:#F9FAFB;border-radius:10px;padding:12px;text-align:center;">'
-                    f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:6px;">평균 목표주가</div>'
-                    f'<div style="font-size:18px;font-weight:700;color:#1A1D23;">'
-                    f'${target_mean:.0f}</div>'
+                    f'<div style="flex:1;background:#F9FAFB;border-radius:8px;padding:12px;text-align:center;">'
+                    f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:5px;">평균 목표주가</div>'
+                    f'<div style="font-size:18px;font-weight:700;color:#1A1D23;">${target_mean:.0f}</div>'
+                    f'</div>'
+                    f'<div style="flex:1;background:#F9FAFB;border-radius:8px;padding:12px;text-align:center;">'
+                    f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:5px;">현재가 대비</div>'
+                    f'<div style="font-size:18px;font-weight:700;color:{upside_clr};">{upside:+.1f}%</div>'
+                    f'</div>'
                     f'</div>'
 
-                    f'<div style="flex:1;background:#F9FAFB;border-radius:10px;padding:12px;text-align:center;">'
-                    f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:6px;">현재가 대비</div>'
-                    f'<div style="font-size:18px;font-weight:700;color:{upside_clr};">'
-                    f'{upside:+.1f}%</div>'
-                    f'</div>'
-
-                    f'</div>'
-
-                    # 목표주가 범위
-                    f'<div style="background:#F9FAFB;border-radius:10px;padding:12px;margin-bottom:14px;">'
-                    f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:8px;">목표주가 범위</div>'
+                    f'<div style="background:#F9FAFB;border-radius:8px;padding:12px;margin-bottom:12px;">'
+                    f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:6px;">목표주가 범위</div>'
                     f'<div style="display:flex;justify-content:space-between;align-items:center;">'
                     f'<div style="text-align:center;">'
                     f'<div style="font-size:10px;color:#DC2626;">최저</div>'
                     f'<div style="font-size:14px;font-weight:600;color:#DC2626;">${target_low:.0f}</div>'
                     f'</div>'
-                    f'<div style="font-size:11px;color:#9CA3AF;">←  현재 ${current_price:.0f}  →</div>'
+                    f'<div style="font-size:11px;color:#9CA3AF;">← 현재 ${current_price:.0f} →</div>'
                     f'<div style="text-align:center;">'
                     f'<div style="font-size:10px;color:#059669;">최고</div>'
                     f'<div style="font-size:14px;font-weight:600;color:#059669;">${target_high:.0f}</div>'
@@ -1941,142 +1888,80 @@ def render_detail_page():
                     f'</div>'
                     f'</div>'
 
-                    # 해석 가이드
-                    f'<div style="font-size:12px;color:#6B7280;line-height:1.7;margin-bottom:14px;">'
-                    f'<b>어떻게 읽나요?</b><br>'
-                    f'· 현재가 대비 <b style="color:#059669;">+10% 이상</b> → 전문가들이 지금 저평가로 보는 것<br>'
-                    f'· 현재가 대비 <b style="color:#DC2626;">0% 이하</b> → 이미 충분히 올랐다고 보는 것<br>'
-                    f'· Signum 승률이 높고 목표주가 괴리도 크면 → 더 확신 가능'
-                    f'</div>'
-
-                    f'<a href="{ya_url}" target="_blank" style="display:inline-block;'
+                    f'<a href="{ya_url}" target="_blank" style="display:block;text-align:center;'
                     f'background:#0F172A;color:#fff;font-size:12px;font-weight:600;'
-                    f'padding:10px 18px;border-radius:8px;text-decoration:none;">'
-                    f'Yahoo Finance에서 더 자세히 보기 →</a>'
+                    f'padding:10px;border-radius:8px;text-decoration:none;">'
+                    f'Yahoo Finance — 상세 애널리스트 정보 →</a>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+            except Exception:
+                st.markdown(
+                    f'<div style="background:#F9FAFB;border:1px solid #E8EAED;border-radius:10px;'
+                    f'padding:14px;margin-bottom:10px;font-size:12px;color:#9CA3AF;">'
+                    f'👔 애널리스트 데이터를 불러오지 못했어요.'
+                    f'<a href="{ya_url}" target="_blank" style="color:#0F172A;font-weight:600;'
+                    f'margin-left:8px;">Yahoo Finance에서 직접 확인 →</a>'
                     f'</div>',
                     unsafe_allow_html=True
                 )
 
-            except Exception:
-                st.markdown(
-                    f'<div style="background:#F9FAFB;border:1px solid #E8EAED;border-radius:12px;'
-                    f'padding:16px;margin-bottom:14px;font-size:12px;color:#9CA3AF;">'
-                    f'📊 애널리스트 데이터를 불러오지 못했어요.</div>',
-                    unsafe_allow_html=True
-                )
-
-            # ── 2. 실적 전문 확인 — 무료 대안 ─────────────────────────
-            sa_free_url   = f"https://finance.yahoo.com/quote/{target}/analysis"
-            motley_url    = f"https://www.fool.com/quote/{target.lower()}/"
-            ir_url        = f"https://www.google.com/search?q={target}+earnings+call+transcript+site:ir.{target.lower()}.com+OR+site:fool.com+OR+site:finance.yahoo.com"
-
+            # ── Seeking Alpha 가이드 ────────────────────────────────
             st.markdown(
-                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
-                f'padding:20px;margin-bottom:14px;">'
+                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
+                f'padding:16px;margin-bottom:10px;">'
+                f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:12px;">'
+                f'📄 Seeking Alpha — 실적 발표 전문 (Earnings Call)</div>'
 
-                f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">'
-                f'<span style="font-size:22px;">💰</span>'
-                f'<div>'
-                f'<div style="font-size:14px;font-weight:700;color:#1A1D23;">고객사가 돈을 더 쓸 예정인가요?</div>'
-                f'<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">분기 실적 발표 후 · 약 3분 · 전부 무료</div>'
-                f'</div>'
-                f'</div>'
-
-                f'<div style="font-size:12px;color:#6B7280;line-height:1.7;margin-bottom:16px;">'
-                f'기술주는 자기 실적보다 <b>"큰 고객사가 얼마나 투자할 것인가"</b>에 더 크게 움직여요.<br>'
-                f'Microsoft·Google·Amazon이 "AI 서버 투자 늘리겠다"고 하면 → {target} 같은 공급사에 바로 호재예요.'
+                f'<div style="font-size:12px;color:#6B7280;line-height:1.7;margin-bottom:12px;">'
+                f'실적 발표 때 CEO·CFO가 직접 한 말이 담긴 전문이에요. 기사보다 훨씬 원본에 가까워요.<br>'
+                f'아래 항목들을 중점적으로 보세요.'
                 f'</div>'
 
-                # 무료 확인 방법 3가지
-                f'<div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:10px;">무료로 확인하는 법</div>'
+                # 체크 항목들
+                f'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">'
 
-                f'<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;'
-                f'padding:12px 14px;margin-bottom:8px;">'
-                f'<div style="font-size:12px;font-weight:600;color:#065F46;margin-bottom:4px;">'
-                f'① Yahoo Finance — Earnings 탭</div>'
+                f'<div style="background:#F0FDF4;border-left:3px solid #059669;'
+                f'border-radius:0 8px 8px 0;padding:10px 12px;">'
+                f'<div style="font-size:12px;font-weight:600;color:#065F46;margin-bottom:3px;">'
+                f'① 가이던스 (Guidance)</div>'
                 f'<div style="font-size:11px;color:#374151;line-height:1.6;">'
-                f'종목 페이지 → Analysis 탭 → 아래로 내리면 분기별 실적·가이던스 요약이 있어요.<br>'
-                f'숫자가 올라가고 있으면 ↑ 좋은 신호예요.'
+                f'"raised guidance" "above consensus" → 다음 분기 전망을 올렸다는 신호<br>'
+                f'"lowered guidance" "below expectations" → 전망을 낮췄다는 경고 신호'
                 f'</div>'
                 f'</div>'
 
-                f'<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;'
-                f'padding:12px 14px;margin-bottom:8px;">'
-                f'<div style="font-size:12px;font-weight:600;color:#065F46;margin-bottom:4px;">'
-                f'② The Motley Fool — 무료 분석 기사</div>'
+                f'<div style="background:#F0FDF4;border-left:3px solid #059669;'
+                f'border-radius:0 8px 8px 0;padding:10px 12px;">'
+                f'<div style="font-size:12px;font-weight:600;color:#065F46;margin-bottom:3px;">'
+                f'② CAPEX (설비투자)</div>'
                 f'<div style="font-size:11px;color:#374151;line-height:1.6;">'
-                f'실적 발표 직후 요약 기사가 올라와요. "CAPEX" "guidance" "raised" 같은 단어가 있는지 확인하세요.'
+                f'Microsoft·Google·Amazon 같은 {target}의 고객사 실적 전문에서 확인.<br>'
+                f'"CAPEX to increase / expand" → {target} 같은 공급사에 호재<br>'
+                f'"moderating CAPEX / reducing" → 수요 둔화 신호'
                 f'</div>'
                 f'</div>'
 
-                f'<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;'
-                f'padding:12px 14px;margin-bottom:14px;">'
-                f'<div style="font-size:12px;font-weight:600;color:#065F46;margin-bottom:4px;">'
-                f'③ 구글 검색 — 실적 전문 찾기</div>'
+                f'<div style="background:#FEF2F2;border-left:3px solid #DC2626;'
+                f'border-radius:0 8px 8px 0;padding:10px 12px;">'
+                f'<div style="font-size:12px;font-weight:600;color:#991B1B;margin-bottom:3px;">'
+                f'③ 톤 변화 (주의 신호)</div>'
                 f'<div style="font-size:11px;color:#374151;line-height:1.6;">'
-                f'"{target} earnings call transcript" 검색 → 무료로 공개된 전문 찾기.<br>'
-                f'Ctrl+F로 "CAPEX" 검색 → "increase/grow" 이면 호재, "moderate/cut" 이면 주의.'
+                f'"challenging environment" "headwinds" "cautious" 같은 표현이 많아지면<br>'
+                f'숫자가 괜찮아도 경영진이 불안하다는 신호예요.'
                 f'</div>'
                 f'</div>'
 
-                f'<div style="display:flex;gap:8px;">'
-                f'<a href="{ya_url}" target="_blank" style="flex:1;display:inline-block;text-align:center;'
-                f'background:#0F172A;color:#fff;font-size:11px;font-weight:600;'
-                f'padding:10px 8px;border-radius:8px;text-decoration:none;">Yahoo Finance →</a>'
-                f'<a href="{motley_url}" target="_blank" style="flex:1;display:inline-block;text-align:center;'
-                f'background:#6B21A8;color:#fff;font-size:11px;font-weight:600;'
-                f'padding:10px 8px;border-radius:8px;text-decoration:none;">Motley Fool →</a>'
-                f'<a href="{ir_url}" target="_blank" style="flex:1;display:inline-block;text-align:center;'
-                f'background:#374151;color:#fff;font-size:11px;font-weight:600;'
-                f'padding:10px 8px;border-radius:8px;text-decoration:none;">구글 검색 →</a>'
-                f'</div>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
-
-            # ── 3. Reddit — 단순화 ──────────────────────────────────────
-            rd_url = f"https://www.reddit.com/search/?q={target}&sort=new&t=month"
-
-            st.markdown(
-                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
-                f'padding:20px;margin-bottom:14px;">'
-
-                f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">'
-                f'<span style="font-size:22px;">💬</span>'
-                f'<div>'
-                f'<div style="font-size:14px;font-weight:700;color:#1A1D23;">요즘 사람들은 뭐라고 하나요?</div>'
-                f'<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">분기마다 한 번 · 링크 클릭만 하면 돼요</div>'
-                f'</div>'
                 f'</div>'
 
-                f'<div style="font-size:12px;color:#6B7280;line-height:1.7;margin-bottom:14px;">'
-                f'뉴스 기사는 이미 일어난 일을 써요. Reddit에는 실제 투자자·실무자들의 생생한 반응이 올라와요.<br>'
-                f'아래 버튼을 누르면 최근 한 달간 {target} 관련 글이 바로 나와요. <b>긍정적인 글이 많은지, 불만·걱정 글이 많은지</b>만 훑어보세요.'
+                f'<div style="font-size:10px;color:#9CA3AF;margin-bottom:12px;">'
+                f'⚠ 일부 콘텐츠는 유료예요. 무료로 볼 수 있는 기사부터 먼저 확인해보세요.'
                 f'</div>'
 
-                f'<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;'
-                f'padding:10px 14px;margin-bottom:14px;font-size:11px;color:#92400E;">'
-                f'💡 <b>이런 글이 많아지면 주의하세요</b><br>'
-                f'"대신 다른 거 쓴다" · "납기가 너무 늦다" · "경쟁사가 더 낫다"'
-                f'</div>'
-
-                f'<a href="{rd_url}" target="_blank" style="display:block;text-align:center;'
-                f'background:#FF4500;color:#fff;font-size:13px;font-weight:600;'
-                f'padding:12px;border-radius:8px;text-decoration:none;">'
-                f'Reddit에서 {target} 최근 반응 보기 →</a>'
-                f'</div>',
-                unsafe_allow_html=True
-            )
-
-            # ── 하단 요약 ──────────────────────────────────────────────
-            st.markdown(
-                f'<div style="background:#F9FAFB;border:1px solid #E8EAED;border-radius:10px;'
-                f'padding:16px;font-size:12px;color:#6B7280;line-height:1.9;">'
-                f'<b style="color:#1A1D23;">💡 언제 뭘 확인하면 되나요?</b><br>'
-                f'· <b>매수 전:</b> 목표주가 괴리율이 플러스이고 Signum 승률도 높다 → 확신 가능<br>'
-                f'· <b>보유 중:</b> 분기 실적 발표 후 Yahoo Finance·Motley Fool에서 가이던스 방향 확인<br>'
-                f'· <b>매도 고민 중:</b> Reddit에서 최근 반응 훑어보기 → 부정적 글이 늘었나?<br><br>'
-                f'<b style="color:#7C3AED;">세 가지가 모두 같은 방향을 가리킬 때 가장 확신이 높은 순간이에요.</b>'
+                f'<a href="{sa_url}" target="_blank" style="display:block;text-align:center;'
+                f'background:#7C3AED;color:#fff;font-size:12px;font-weight:600;'
+                f'padding:10px;border-radius:8px;text-decoration:none;">'
+                f'Seeking Alpha — {target} 실적 페이지 →</a>'
                 f'</div>',
                 unsafe_allow_html=True
             )
