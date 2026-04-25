@@ -1671,6 +1671,92 @@ def render_detail_page():
             with st.spinner("Lv.3 계산 중..."):
                 var_95  = calc_var(target, confidence=0.95)
                 mc_data = calc_monte_carlo(target, simulations=1000)
+                bt      = run_backtest(target, cfg["indicators"])
+
+            # ── 백테스트 요약 카드 ────────────────────────────────────
+            if bt:
+                buy_acc_1m  = bt.get("buy_acc", 0)
+                buy_acc_3m  = bt.get("buy_acc_3m", 0)
+                risk_acc_1m = bt.get("risk_acc", 0)
+                risk_acc_3m = bt.get("risk_acc_3m", 0)
+                sharpe      = bt.get("sharpe", 0)
+                buy_cnt     = bt.get("buy_count", 0)
+                risk_cnt    = bt.get("risk_count", 0)
+                total_cnt   = bt.get("total", 0)
+
+                def acc_color(v):
+                    return "#059669" if v >= 60 else "#D97706" if v >= 45 else "#DC2626"
+
+                sharpe_note = (
+                    "우수" if sharpe >= 1.0 else
+                    "양호" if sharpe >= 0.5 else
+                    "보통" if sharpe >= 0  else "부진"
+                )
+                sharpe_clr = (
+                    "#059669" if sharpe >= 1.0 else
+                    "#059669" if sharpe >= 0.5 else
+                    "#D97706" if sharpe >= 0  else "#DC2626"
+                )
+
+                st.markdown(
+                    f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:10px;'
+                    f'padding:16px;margin-bottom:10px;">'
+                    f'<div style="font-size:11px;color:#9CA3AF;margin-bottom:12px;">'
+                    f'🧪 과거 신호 적중률 — 2년치 데이터 · 총 {total_cnt}회 신호</div>'
+
+                    # 매수 신호 행
+                    f'<div style="padding:12px 14px;background:#F9FAFB;border-radius:8px;margin-bottom:8px;">'
+                    f'<div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px;">'
+                    f'📈 매수 신호 ({buy_cnt}회)</div>'
+                    f'<div style="display:flex;justify-content:space-between;">'
+                    f'<div style="text-align:center;">'
+                    f'<div style="font-size:20px;font-weight:700;color:{acc_color(buy_acc_1m)};">{buy_acc_1m:.0f}%</div>'
+                    f'<div style="font-size:10px;color:#9CA3AF;margin-top:2px;">1개월 적중률</div>'
+                    f'</div>'
+                    f'<div style="text-align:center;">'
+                    f'<div style="font-size:20px;font-weight:700;color:{acc_color(buy_acc_3m)};">{buy_acc_3m:.0f}%</div>'
+                    f'<div style="font-size:10px;color:#9CA3AF;margin-top:2px;">3개월 적중률</div>'
+                    f'</div>'
+                    f'<div style="text-align:center;">'
+                    f'<div style="font-size:20px;font-weight:700;color:{sharpe_clr};">{sharpe:.2f}</div>'
+                    f'<div style="font-size:10px;color:#9CA3AF;margin-top:2px;">샤프지수 ({sharpe_note})</div>'
+                    f'</div>'
+                    f'</div>'
+                    f'</div>'
+
+                    # 리스크 신호 행
+                    f'<div style="padding:12px 14px;background:#F9FAFB;border-radius:8px;margin-bottom:10px;">'
+                    f'<div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:8px;">'
+                    f'📉 리스크 신호 ({risk_cnt}회)</div>'
+                    f'<div style="display:flex;justify-content:space-between;">'
+                    f'<div style="text-align:center;">'
+                    f'<div style="font-size:20px;font-weight:700;color:{acc_color(risk_acc_1m)};">{risk_acc_1m:.0f}%</div>'
+                    f'<div style="font-size:10px;color:#9CA3AF;margin-top:2px;">1개월 적중률</div>'
+                    f'</div>'
+                    f'<div style="text-align:center;">'
+                    f'<div style="font-size:20px;font-weight:700;color:{acc_color(risk_acc_3m)};">{risk_acc_3m:.0f}%</div>'
+                    f'<div style="font-size:10px;color:#9CA3AF;margin-top:2px;">3개월 적중률</div>'
+                    f'</div>'
+                    f'<div style="text-align:center;">'
+                    f'<div style="font-size:20px;font-weight:700;color:#6B7280;">—</div>'
+                    f'<div style="font-size:10px;color:#9CA3AF;margin-top:2px;"></div>'
+                    f'</div>'
+                    f'</div>'
+                    f'</div>'
+
+                    f'<div style="font-size:10px;color:#B0B7C3;line-height:1.6;">'
+                    f'적중률 = 매수 신호 후 실제로 오른 비율 / 리스크 신호 후 실제로 내린 비율<br>'
+                    f'⚠ 과거 데이터 기반이며 미래 성과를 보장하지 않습니다.</div>'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+            else:
+                st.markdown(
+                    f'<div style="background:#F9FAFB;border:1px solid #E8EAED;border-radius:10px;'
+                    f'padding:14px 16px;margin-bottom:10px;font-size:12px;color:#9CA3AF;">'
+                    f'🧪 과거 신호 적중률 — 데이터 부족으로 계산 불가</div>',
+                    unsafe_allow_html=True
+                )
 
             # VaR
             if var_95 is not None:
