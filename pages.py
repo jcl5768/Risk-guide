@@ -1965,7 +1965,11 @@ def render_detail_page():
                     unsafe_allow_html=True
                 )
 
-            # ── 2. Seeking Alpha — CAPEX 가이드 ────────────────────────
+            # ── 2. 실적 전문 확인 — 무료 대안 ─────────────────────────
+            sa_free_url   = f"https://finance.yahoo.com/quote/{target}/analysis"
+            motley_url    = f"https://www.fool.com/quote/{target.lower()}/"
+            ir_url        = f"https://www.google.com/search?q={target}+earnings+call+transcript+site:ir.{target.lower()}.com+OR+site:fool.com+OR+site:finance.yahoo.com"
+
             st.markdown(
                 f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
                 f'padding:20px;margin-bottom:14px;">'
@@ -1974,33 +1978,65 @@ def render_detail_page():
                 f'<span style="font-size:22px;">💰</span>'
                 f'<div>'
                 f'<div style="font-size:14px;font-weight:700;color:#1A1D23;">고객사가 돈을 더 쓸 예정인가요?</div>'
-                f'<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">분기 실적 발표 후 · 약 3분</div>'
+                f'<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">분기 실적 발표 후 · 약 3분 · 전부 무료</div>'
                 f'</div>'
                 f'</div>'
 
-                f'<div style="font-size:12px;color:#6B7280;line-height:1.7;margin-bottom:14px;">'
+                f'<div style="font-size:12px;color:#6B7280;line-height:1.7;margin-bottom:16px;">'
                 f'기술주는 자기 실적보다 <b>"큰 고객사가 얼마나 투자할 것인가"</b>에 더 크게 움직여요.<br>'
-                f'예를 들어 Microsoft가 "AI 서버에 내년 더 투자하겠다"고 하면 → {target} 같은 공급사에 바로 호재예요.<br><br>'
-                f'<b>이렇게 확인하세요 (3단계)</b><br>'
-                f'① Seeking Alpha 링크 클릭 → {target} 실적 발표 페이지 열기<br>'
-                f'② 페이지에서 <b>Ctrl+F → "CAPEX"</b> 입력해서 해당 문장 찾기<br>'
-                f'③ "increase" "grow" "expand" → 호재 / "moderate" "reduce" "cut" → 주의'
+                f'Microsoft·Google·Amazon이 "AI 서버 투자 늘리겠다"고 하면 → {target} 같은 공급사에 바로 호재예요.'
                 f'</div>'
 
-                f'<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;'
-                f'padding:10px 14px;margin-bottom:14px;font-size:11px;color:#92400E;">'
-                f'⚠ Seeking Alpha는 일부 콘텐츠가 유료예요. 무료로 볼 수 있는 기사도 많으니 일단 들어가서 확인해보세요.'
+                # 무료 확인 방법 3가지
+                f'<div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:10px;">무료로 확인하는 법</div>'
+
+                f'<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;'
+                f'padding:12px 14px;margin-bottom:8px;">'
+                f'<div style="font-size:12px;font-weight:600;color:#065F46;margin-bottom:4px;">'
+                f'① Yahoo Finance — Earnings 탭</div>'
+                f'<div style="font-size:11px;color:#374151;line-height:1.6;">'
+                f'종목 페이지 → Analysis 탭 → 아래로 내리면 분기별 실적·가이던스 요약이 있어요.<br>'
+                f'숫자가 올라가고 있으면 ↑ 좋은 신호예요.'
+                f'</div>'
                 f'</div>'
 
-                f'<a href="{sa_url}" target="_blank" style="display:inline-block;'
-                f'background:#7C3AED;color:#fff;font-size:12px;font-weight:600;'
-                f'padding:10px 18px;border-radius:8px;text-decoration:none;">'
-                f'Seeking Alpha — {target} 실적 페이지 →</a>'
+                f'<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;'
+                f'padding:12px 14px;margin-bottom:8px;">'
+                f'<div style="font-size:12px;font-weight:600;color:#065F46;margin-bottom:4px;">'
+                f'② The Motley Fool — 무료 분석 기사</div>'
+                f'<div style="font-size:11px;color:#374151;line-height:1.6;">'
+                f'실적 발표 직후 요약 기사가 올라와요. "CAPEX" "guidance" "raised" 같은 단어가 있는지 확인하세요.'
+                f'</div>'
+                f'</div>'
+
+                f'<div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;'
+                f'padding:12px 14px;margin-bottom:14px;">'
+                f'<div style="font-size:12px;font-weight:600;color:#065F46;margin-bottom:4px;">'
+                f'③ 구글 검색 — 실적 전문 찾기</div>'
+                f'<div style="font-size:11px;color:#374151;line-height:1.6;">'
+                f'"{target} earnings call transcript" 검색 → 무료로 공개된 전문 찾기.<br>'
+                f'Ctrl+F로 "CAPEX" 검색 → "increase/grow" 이면 호재, "moderate/cut" 이면 주의.'
+                f'</div>'
+                f'</div>'
+
+                f'<div style="display:flex;gap:8px;">'
+                f'<a href="{ya_url}" target="_blank" style="flex:1;display:inline-block;text-align:center;'
+                f'background:#0F172A;color:#fff;font-size:11px;font-weight:600;'
+                f'padding:10px 8px;border-radius:8px;text-decoration:none;">Yahoo Finance →</a>'
+                f'<a href="{motley_url}" target="_blank" style="flex:1;display:inline-block;text-align:center;'
+                f'background:#6B21A8;color:#fff;font-size:11px;font-weight:600;'
+                f'padding:10px 8px;border-radius:8px;text-decoration:none;">Motley Fool →</a>'
+                f'<a href="{ir_url}" target="_blank" style="flex:1;display:inline-block;text-align:center;'
+                f'background:#374151;color:#fff;font-size:11px;font-weight:600;'
+                f'padding:10px 8px;border-radius:8px;text-decoration:none;">구글 검색 →</a>'
+                f'</div>'
                 f'</div>',
                 unsafe_allow_html=True
             )
 
-            # ── 3. Reddit — 현장 민심 ───────────────────────────────────
+            # ── 3. Reddit — 단순화 ──────────────────────────────────────
+            rd_url = f"https://www.reddit.com/search/?q={target}&sort=new&t=month"
+
             st.markdown(
                 f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
                 f'padding:20px;margin-bottom:14px;">'
@@ -2008,30 +2044,26 @@ def render_detail_page():
                 f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">'
                 f'<span style="font-size:22px;">💬</span>'
                 f'<div>'
-                f'<div style="font-size:14px;font-weight:700;color:#1A1D23;">실제로 쓰는 사람들은 뭐라고 하나요?</div>'
-                f'<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">보유 중 분기마다 한 번</div>'
+                f'<div style="font-size:14px;font-weight:700;color:#1A1D23;">요즘 사람들은 뭐라고 하나요?</div>'
+                f'<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">분기마다 한 번 · 링크 클릭만 하면 돼요</div>'
                 f'</div>'
                 f'</div>'
 
                 f'<div style="font-size:12px;color:#6B7280;line-height:1.7;margin-bottom:14px;">'
-                f'뉴스 기사는 이미 일어난 일을 써요. Reddit은 실무자들이 <b>지금 겪고 있는 것</b>을 올려요.<br>'
-                f'"요즘 {target} 말고 다른 거 쓰기 시작했다"는 글이 많아지면 → 경쟁이 심해지는 신호예요.<br><br>'
-                f'<b>이 검색어로 확인하세요</b><br>'
-                f'· <b>대안 탐색:</b> "alternative" 검색 → 다른 제품으로 갈아타려는 사람이 늘고 있나?<br>'
-                f'· <b>불만 확인:</b> "problem / issue" 검색 → 품질·납기·서비스 불만이 쌓이고 있나?<br><br>'
-                f'이런 글이 늘어나는 추세라면 Signum 승률이 높아도 한 번 더 생각해보는 게 좋아요.'
+                f'뉴스 기사는 이미 일어난 일을 써요. Reddit에는 실제 투자자·실무자들의 생생한 반응이 올라와요.<br>'
+                f'아래 버튼을 누르면 최근 한 달간 {target} 관련 글이 바로 나와요. <b>긍정적인 글이 많은지, 불만·걱정 글이 많은지</b>만 훑어보세요.'
                 f'</div>'
 
-                f'<div style="display:flex;gap:8px;">'
-                f'<a href="{rd_alt}" target="_blank" style="flex:1;display:inline-block;text-align:center;'
-                f'background:#FF4500;color:#fff;font-size:12px;font-weight:600;'
-                f'padding:10px 14px;border-radius:8px;text-decoration:none;">'
-                f'"대안" 검색 →</a>'
-                f'<a href="{rd_iss}" target="_blank" style="flex:1;display:inline-block;text-align:center;'
-                f'background:#FF4500;color:#fff;font-size:12px;font-weight:600;'
-                f'padding:10px 14px;border-radius:8px;text-decoration:none;">'
-                f'"불만" 검색 →</a>'
+                f'<div style="background:#FFF7ED;border:1px solid #FED7AA;border-radius:8px;'
+                f'padding:10px 14px;margin-bottom:14px;font-size:11px;color:#92400E;">'
+                f'💡 <b>이런 글이 많아지면 주의하세요</b><br>'
+                f'"대신 다른 거 쓴다" · "납기가 너무 늦다" · "경쟁사가 더 낫다"'
                 f'</div>'
+
+                f'<a href="{rd_url}" target="_blank" style="display:block;text-align:center;'
+                f'background:#FF4500;color:#fff;font-size:13px;font-weight:600;'
+                f'padding:12px;border-radius:8px;text-decoration:none;">'
+                f'Reddit에서 {target} 최근 반응 보기 →</a>'
                 f'</div>',
                 unsafe_allow_html=True
             )
@@ -2042,14 +2074,15 @@ def render_detail_page():
                 f'padding:16px;font-size:12px;color:#6B7280;line-height:1.9;">'
                 f'<b style="color:#1A1D23;">💡 언제 뭘 확인하면 되나요?</b><br>'
                 f'· <b>매수 전:</b> 목표주가 괴리율이 플러스이고 Signum 승률도 높다 → 확신 가능<br>'
-                f'· <b>보유 중:</b> 분기 실적 발표 후 Seeking Alpha에서 CAPEX 방향만 확인<br>'
-                f'· <b>매도 고민 중:</b> Reddit에서 "alternative" 검색 → 대안 찾는 목소리가 커지고 있나?<br><br>'
+                f'· <b>보유 중:</b> 분기 실적 발표 후 Yahoo Finance·Motley Fool에서 가이던스 방향 확인<br>'
+                f'· <b>매도 고민 중:</b> Reddit에서 최근 반응 훑어보기 → 부정적 글이 늘었나?<br><br>'
                 f'<b style="color:#7C3AED;">세 가지가 모두 같은 방향을 가리킬 때 가장 확신이 높은 순간이에요.</b>'
                 f'</div>',
                 unsafe_allow_html=True
             )
 
     # ── TAB 2: 섹터 지표 & 리스크 드라이버 ──────────────────────────
+    with tab2:
         macro_sign    = "+" if weighted_z * 15 >= 0 else ""
         macro_contrib = f"{macro_sign}{weighted_z*15:.1f}"
 
