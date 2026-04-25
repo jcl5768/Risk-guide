@@ -1388,7 +1388,7 @@ def render_detail_page():
 
         # ── Lv.1 / Lv.2 / Lv.3 패널 ─────────────────────────────────
         st.markdown("<div style='height:12px;'></div>", unsafe_allow_html=True)
-        lv_tab1, lv_tab2, lv_tab3 = st.tabs(["☀️ Lv.1 직관", "📊 Lv.2 분석", "🔬 Lv.3 심화"])
+        lv_tab1, lv_tab2, lv_tab3, lv_tab4 = st.tabs(["☀️ Lv.1 직관", "📊 Lv.2 분석", "🔬 Lv.3 심화", "📋 Lv.4 직접확인"])
 
         # ── Lv.1: 직관 ───────────────────────────────────────────────
         with lv_tab1:
@@ -1833,7 +1833,131 @@ def render_detail_page():
 
 
 
-    # ── TAB 2: 섹터 지표 & 리스크 드라이버 ──────────────────────────
+        # ── Lv.4: 직접 확인 ──────────────────────────────────────────
+        with lv_tab4:
+            ya_url  = f"https://finance.yahoo.com/quote/{target}/analysis"
+            sa_url  = f"https://seekingalpha.com/symbol/{target}/earnings"
+            rd_url  = f"https://www.reddit.com/search/?q={target}+stock&sort=new"
+
+            st.markdown(
+                f'<div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;">'
+                f'<span class="lv4" style="background:#7C3AED;color:#fff;font-size:10px;'
+                f'font-weight:700;padding:2px 7px;border-radius:4px;">Lv.4</span>'
+                f'<span style="font-size:12px;font-weight:600;color:#1A1D23;">직접 확인 체크리스트</span>'
+                f'</div>'
+
+                # 안내 박스
+                f'<div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:10px;'
+                f'padding:14px 16px;margin-bottom:18px;font-size:12px;color:#5B21B6;line-height:1.7;">'
+                f'📌 <b>이 탭은 Signum이 계산하지 않는 영역입니다.</b><br>'
+                f'점수와 별개로, 매수·매도 전 충래님이 직접 눈으로 확인해야 할 것들이에요.<br>'
+                f'Signum 승률과 아래 항목들이 <b>같은 방향을 가리킬 때</b> 비로소 "진짜 신호"에 가까워집니다.'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+            # ── 항목 1: CAPEX ──────────────────────────────────────────
+            st.markdown(
+                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
+                f'padding:20px;margin-bottom:14px;">'
+
+                f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">'
+                f'<span style="font-size:22px;">💰</span>'
+                f'<div>'
+                f'<div style="font-size:14px;font-weight:700;color:#1A1D23;">CAPEX (설비투자) 방향 확인</div>'
+                f'<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">분기마다 한 번 · 약 5분</div>'
+                f'</div>'
+                f'</div>'
+
+                f'<div style="font-size:13px;color:#374151;line-height:1.8;margin-bottom:14px;">'
+                f'기술주 주가는 실적 숫자보다 <b>"고객사가 앞으로 얼마나 더 투자할 것인가"</b>에 더 크게 반응해요.<br>'
+                f'Microsoft·Google·Amazon 같은 빅테크의 실적 발표 전문(Transcript)에서 '
+                f'<b style="color:#7C3AED;">CAPEX</b> 단어를 검색해보세요.<br><br>'
+                f'<b>어떻게 보나요?</b><br>'
+                f'· "We expect CAPEX to increase..." → 인프라 수요 ↑ → {target} 같은 공급사에 호재<br>'
+                f'· "We are moderating our CAPEX..." → 수요 둔화 신호 → 주의 필요'
+                f'</div>'
+
+                f'<a href="{sa_url}" target="_blank" style="display:inline-block;'
+                f'background:#7C3AED;color:#fff;font-size:12px;font-weight:600;'
+                f'padding:10px 18px;border-radius:8px;text-decoration:none;">'
+                f'Seeking Alpha — {target} 실적 전문 보기 →</a>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+            # ── 항목 2: 애널리스트 추정치 ──────────────────────────────
+            st.markdown(
+                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
+                f'padding:20px;margin-bottom:14px;">'
+
+                f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">'
+                f'<span style="font-size:22px;">📈</span>'
+                f'<div>'
+                f'<div style="font-size:14px;font-weight:700;color:#1A1D23;">애널리스트 추정치 변화</div>'
+                f'<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">매수 전 1분 확인</div>'
+                f'</div>'
+                f'</div>'
+
+                f'<div style="font-size:13px;color:#374151;line-height:1.8;margin-bottom:14px;">'
+                f'수십 명의 애널리스트들이 기업 탐방 후 수익 추정치를 수정해요. '
+                f'충래님이 직접 분석 안 해도 <b>"그들이 올리고 있는가, 내리고 있는가"</b>만 보면 돼요.<br><br>'
+                f'<b>어떻게 보나요?</b><br>'
+                f'Yahoo Finance → Analysis 탭 → Earnings Estimate 섹션<br>'
+                f'· <b style="color:#059669;">Current Estimate가 7일 전·30일 전보다 높다</b> → 전문가들이 낙관적으로 바뀌는 중<br>'
+                f'· <b style="color:#DC2626;">Current Estimate가 계속 낮아진다</b> → 실망 신호. Signum 승률과 함께 재확인 필요'
+                f'</div>'
+
+                f'<a href="{ya_url}" target="_blank" style="display:inline-block;'
+                f'background:#0F172A;color:#fff;font-size:12px;font-weight:600;'
+                f'padding:10px 18px;border-radius:8px;text-decoration:none;">'
+                f'Yahoo Finance — {target} 애널리스트 추정치 보기 →</a>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+            # ── 항목 3: 현장 민심 ──────────────────────────────────────
+            st.markdown(
+                f'<div style="background:#FFFFFF;border:1px solid #E8EAED;border-radius:12px;'
+                f'padding:20px;margin-bottom:14px;">'
+
+                f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">'
+                f'<span style="font-size:22px;">💬</span>'
+                f'<div>'
+                f'<div style="font-size:14px;font-weight:700;color:#1A1D23;">현장 민심 — 실무자들의 목소리</div>'
+                f'<div style="font-size:11px;color:#9CA3AF;margin-top:1px;">보유 중 분기마다 한 번</div>'
+                f'</div>'
+                f'</div>'
+
+                f'<div style="font-size:13px;color:#374151;line-height:1.8;margin-bottom:14px;">'
+                f'기사보다 Reddit이 훨씬 빨라요. 실무자들이 "요즘 {target} 대신 다른 거 쓰기 시작했다"는 '
+                f'얘기를 올리면 그게 해자가 무너지는 첫 신호예요.<br><br>'
+                f'<b>어떻게 보나요?</b><br>'
+                f'· <b style="color:#DC2626;">Alternative</b> 검색 → 대안을 찾는 사람이 늘고 있나?<br>'
+                f'· <b style="color:#DC2626;">Issues / Problem</b> 검색 → 품질·납기·서비스 불만이 올라오나?<br>'
+                f'· 이런 글이 많아진다면 Signum 승률이 높아도 한 번 더 생각해볼 필요가 있어요.'
+                f'</div>'
+
+                f'<a href="{rd_url}" target="_blank" style="display:inline-block;'
+                f'background:#FF4500;color:#fff;font-size:12px;font-weight:600;'
+                f'padding:10px 18px;border-radius:8px;text-decoration:none;">'
+                f'Reddit — {target} 현장 반응 검색 →</a>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+
+            # ── 하단 요약 ──────────────────────────────────────────────
+            st.markdown(
+                f'<div style="background:#F9FAFB;border:1px solid #E8EAED;border-radius:10px;'
+                f'padding:16px;font-size:12px;color:#6B7280;line-height:1.8;">'
+                f'<b style="color:#1A1D23;">💡 언제 확인하면 되나요?</b><br>'
+                f'· <b>매수 전:</b> Signum 승률 70% 이상일 때 → 애널리스트 추정치 방향만 1분 확인<br>'
+                f'· <b>보유 중:</b> 분기 실적 발표 후 → CAPEX 언급 방향 확인<br>'
+                f'· <b>매도 고민 중:</b> Reddit에서 Alternative 검색 → 대안 찾는 목소리가 커지고 있나?<br><br>'
+                f'<b style="color:#7C3AED;">Signum + 위 3가지가 같은 방향을 가리킬 때가 가장 확신이 높은 순간입니다.</b>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
     with tab2:
         macro_sign    = "+" if weighted_z * 15 >= 0 else ""
         macro_contrib = f"{macro_sign}{weighted_z*15:.1f}"
