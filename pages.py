@@ -1330,26 +1330,66 @@ def render_detail_page():
             }
             st.plotly_chart(chart_fig, use_container_width=True, config=_chart_cfg)
 
-            # 거래량 (여백 없이 바로 아래)
+            # 거래량 (여백 없이 바로 아래) — 평균 대비 강도 포함
             if "Volume" in df.columns and df["Volume"].sum() > 0:
-                vol_colors = [
-                    "#10B981" if i > 0 and df["Close"].iloc[i] >= df["Close"].iloc[i-1]
-                    else "#EF4444" if i > 0 else "#9CA3AF"
-                    for i in range(len(df))
-                ]
-                vol_fig = go.Figure(go.Bar(
+                vol_avg = df["Volume"].rolling(20, min_periods=5).mean()
+                vol_ratio = df["Volume"] / vol_avg.replace(0, float("nan"))
+
+                # 색상 로직: 방향(가격) + 강도(거래량) 결합
+                def _vol_color(i):
+                    if i == 0:
+                        return "#9CA3AF"
+                    up   = df["Close"].iloc[i] >= df["Close"].iloc[i-1]
+                    r    = vol_ratio.iloc[i] if not (vol_ratio.iloc[i] != vol_ratio.iloc[i]) else 1.0
+                    if r >= 1.5:
+                        # 급증 — 방향이 중요
+                        return "#059669" if up else "#DC2626"   # 진한 초록/빨강
+                    elif r <= 0.5:
+                        return "#D1D5DB"   # 급감 — 회색 (신뢰도 약화)
+                    else:
+                        return "rgba(16,185,129,0.45)" if up else "rgba(239,68,68,0.45)"
+
+                vol_colors = [_vol_color(i) for i in range(len(df))]
+
+                vol_fig = go.Figure()
+                # 거래량 바
+                vol_fig.add_trace(go.Bar(
                     x=df["Date"], y=df["Volume"],
-                    marker_color=vol_colors, opacity=0.5,
-                    hovertemplate="%{x}<br>거래량: %{y:,.0f}<extra></extra>",
+                    marker_color=vol_colors,
+                    hovertemplate=(
+                        "%{x}<br>거래량: %{y:,.0f}"
+                        "<extra></extra>"
+                    ),
+                    name="거래량",
                 ))
+                # 20일 평균선
+                vol_fig.add_trace(go.Scatter(
+                    x=df["Date"], y=vol_avg,
+                    mode="lines",
+                    line=dict(color="#F59E0B", width=1.2, dash="dash"),
+                    name="20일 평균",
+                    hovertemplate="평균: %{y:,.0f}<extra></extra>",
+                ))
+
                 vol_fig.update_layout(
-                    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(248,250,252,0.4)",
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(248,250,252,0.4)",
                     xaxis=dict(showgrid=False, tickfont=dict(size=9, color="#9CA3AF")),
-                    yaxis=dict(showgrid=False, tickformat=".2s", tickfont=dict(size=9, color="#9CA3AF")),
-                    margin=dict(t=0, b=4, l=0, r=50),
-                    height=65, showlegend=False,
+                    yaxis=dict(showgrid=False, tickformat=".2s", tickfont=dict(size=9, color="#9CA3AF"), side="right"),
+                    margin=dict(t=2, b=4, l=0, r=50),
+                    height=80,
+                    showlegend=False,
+                    hovermode="x unified",
+                    barmode="overlay",
                 )
-                st.plotly_chart(vol_fig, use_container_width=True)
+
+                # 범례 대신 텍스트 안내
+                st.markdown(
+                    '<div style="font-size:9px;color:#9CA3AF;text-align:right;margin-bottom:1px;">'
+                    '🟩 급증+상승 &nbsp;🟥 급증+하락 &nbsp;⬜ 급감(신뢰↓) &nbsp;— 주황선: 20일 평균</div>',
+                    unsafe_allow_html=True
+                )
+                st.plotly_chart(vol_fig, use_container_width=True, config={"displayModeBar": False})
 
             # ── 기간 선택 버튼 — 4개 균등, 한 줄 전체 너비 ──────────
             period_cols = st.columns(4)
